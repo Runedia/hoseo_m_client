@@ -7,6 +7,7 @@ class NoticeScreen extends StatefulWidget {
   State<NoticeScreen> createState() => _NoticeScreenState();
 }
 
+
 class _NoticeScreenState extends State<NoticeScreen> {
   final List<Map<String, String>> notices = [
     {
