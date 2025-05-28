@@ -1,24 +1,42 @@
 import 'package:flutter/material.dart';
 import 'notice_screen.dart';
-import 'shuttle_screen.dart'; 
-import 'shuttle_select_screen.dart'; 
+import 'shuttle_screen.dart';
+import 'shuttle_select_screen.dart';
+import 'settings_screen.dart';
+import 'academic_home_screen.dart';
+import 'department_screen.dart';
+import 'meal_screen.dart'; // ✅ 식단표 연결
+
+import 'app_themes.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
-
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  static _MyAppState? of(BuildContext context) =>
+      context.findAncestorStateOfType<_MyAppState>();
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  ThemeData _currentTheme = AppThemes.themes['Default']!;
+
+  void updateTheme(String themeName) {
+    setState(() {
+      _currentTheme = AppThemes.themes[themeName] ?? _currentTheme;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '호서대학교 공지앱1',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
-        useMaterial3: true,
-      ),
+      theme: _currentTheme,
       home: const HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
@@ -51,8 +69,21 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFFBE1924),
+        foregroundColor: Colors.white,
         title: const Text("호서대학교 앱"),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -106,6 +137,21 @@ class HomeScreen extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ShuttleSelectScreen()),
+            );
+          } else if (item.title == "학사종합") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AcademicHomePage()),
+            );
+          } else if (item.title == "학과정보") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DepartmentPage()),
+            );
+          } else if (item.title == "식단표") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MealPage()), // ✅ 식단표 연결
             );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(

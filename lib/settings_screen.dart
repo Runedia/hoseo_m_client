@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../main.dart'; // 테마 적용 위해 MyApp 참조
+import 'main.dart'; // 테마 적용 위해 MyApp 참조
 import 'academic_home_screen.dart'; // 홈 화면으로 돌아가기 위한 import
 import 'app_themes.dart'; // 테마 정의한 Map 가져옴
 

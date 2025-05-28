@@ -42,6 +42,8 @@ class _ShuttleSelectScreenState extends State<ShuttleSelectScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFFBE1924), // ✅ 호서대 레드
+        foregroundColor: Colors.white,
         title: const Text('셔틀 노선 및 날짜 선택'),
         centerTitle: true,
       ),

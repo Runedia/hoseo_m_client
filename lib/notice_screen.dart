@@ -7,7 +7,6 @@ class NoticeScreen extends StatefulWidget {
   State<NoticeScreen> createState() => _NoticeScreenState();
 }
 
-
 class _NoticeScreenState extends State<NoticeScreen> {
   final List<Map<String, String>> notices = [
     {
@@ -20,7 +19,7 @@ class _NoticeScreenState extends State<NoticeScreen> {
       'title': '학사일정 변경 안내',
       'author': '학사팀',
       'date': '2025-05-23',
-      'content': '내용 내용 내용 '
+      'content': '내용 내용 내용'
     },
     {
       'title': 'LMS 서버 점검',
@@ -37,13 +36,18 @@ class _NoticeScreenState extends State<NoticeScreen> {
   @override
   Widget build(BuildContext context) {
     final filteredNotices = notices.where((notice) {
-      final matchesCategory = selectedCategory == '전체공지' || notice['author']!.contains(selectedCategory.replaceAll('공지', ''));
-      final matchesSearch = notice['title']!.contains(searchQuery);
+      final matchesCategory = selectedCategory == '전체공지' ||
+          notice['author']!.contains(selectedCategory.replaceAll('공지', ''));
+      final matchesSearch = notice['title']!
+          .toLowerCase()
+          .contains(searchQuery.toLowerCase()); // ✅ 대소문자 무시 검색
       return matchesCategory && matchesSearch;
     }).toList();
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFFBE1924),
+        foregroundColor: Colors.white,
         title: const Text('공지사항'),
         centerTitle: true,
       ),
