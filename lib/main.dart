@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'notice_screen.dart';
-import 'shuttle_screen.dart';
 import 'shuttle_select_screen.dart';
 import 'settings_screen.dart';
 import 'academic_home_screen.dart';
 import 'department_screen.dart';
-import 'meal_screen.dart'; // ✅ 식단표 연결
-
-import 'app_themes.dart';
+import 'meal_screen.dart';
+import 'themes.dart';
 
 void main() {
   runApp(const MyApp());
@@ -24,21 +22,36 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  ThemeData _currentTheme = AppThemes.themes['Default']!;
+  ThemeData _currentTheme = HSColors.HsRed_Theme;
 
   void updateTheme(String themeName) {
     setState(() {
-      _currentTheme = AppThemes.themes[themeName] ?? _currentTheme;
+      switch (themeName) {
+        case 'HS Blue':
+          _currentTheme = HSColors.HsBlue_Theme;
+          break;
+        case 'HS Green':
+          _currentTheme = HSColors.HsGreen_Theme;
+          break;
+        case 'HS Grey':
+          _currentTheme = HSColors.HsGrey_Theme;
+          break;
+        case 'HS Red':
+        default:
+          _currentTheme = HSColors.HsRed_Theme;
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '호서대학교 공지앱1',
-      theme: _currentTheme,
-      home: const HomeScreen(),
-      debugShowCheckedModeBanner: false,
+    return Builder(
+      builder: (context) => MaterialApp(
+        title: '호서대학교 공지앱1',
+        theme: _currentTheme,
+        home: const HomeScreen(),
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }
@@ -69,8 +82,6 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFBE1924),
-        foregroundColor: Colors.white,
         title: const Text("호서대학교 앱"),
         centerTitle: true,
         actions: [
@@ -118,41 +129,71 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.only(bottom: 20.0, top: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildNavButton(
+              context,
+              icon: Icons.arrow_back,
+              label: '이전',
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            _buildNavButton(
+              context,
+              icon: Icons.home,
+              label: '홈',
+              onTap: () {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+            ),
+            _buildNavButton(
+              context,
+              icon: Icons.arrow_forward,
+              label: '다음',
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('다음 기능은 준비 중입니다.')),
+                );
+              },
+            ),
+            _buildNavButton(
+              context,
+              icon: Icons.settings,
+              label: '설정',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildCard(BuildContext context, _FeatureItem item, double iconSize, double fontSize) {
     return Card(
-      color: Colors.red[700],
+      color: Theme.of(context).primaryColor,
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
           if (item.title == "공지사항") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NoticeScreen()),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const NoticeScreen()));
           } else if (item.title == "셔틀버스") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ShuttleSelectScreen()),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const ShuttleSelectScreen()));
           } else if (item.title == "학사종합") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => AcademicHomePage()),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (_) => AcademicHomePage()));
           } else if (item.title == "학과정보") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const DepartmentPage()),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const DepartmentPage()));
           } else if (item.title == "식단표") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const MealPage()), // ✅ 식단표 연결
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const MealPage()));
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('${item.title} 클릭됨')),
@@ -166,12 +207,36 @@ class HomeScreen extends StatelessWidget {
             children: [
               Icon(item.icon, size: iconSize, color: Colors.white),
               SizedBox(height: iconSize * 0.15),
-              Text(item.title,
-                  style: TextStyle(fontSize: fontSize, color: Colors.white)),
+              Text(item.title, style: TextStyle(fontSize: fontSize, color: Colors.white)),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildNavButton(BuildContext context,
+      {required IconData icon, required String label, required VoidCallback onTap}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ElevatedButton(
+          onPressed: onTap,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isDark ? Colors.white : Colors.black,
+            foregroundColor: isDark ? Colors.black : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            minimumSize: const Size(48, 48),
+          ),
+          child: Icon(icon, size: 20),
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
     );
   }
 }

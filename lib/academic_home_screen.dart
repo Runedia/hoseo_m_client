@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'new_dart/curriculum_home_screen.dart';
+import 'new_dart/scadule_screen.dart';
+import 'new_dart/class_screen.dart';
+import 'new_dart/record_screen.dart';
 import 'settings_screen.dart';
 
 class AcademicHomePage extends StatelessWidget {
@@ -9,10 +13,6 @@ class AcademicHomePage extends StatelessWidget {
     _FeatureItem('교육과정', Icons.book),
     _FeatureItem('수업', Icons.class_),
     _FeatureItem('학적', Icons.assignment_ind),
-    _FeatureItem('취업지원', Icons.work),
-    _FeatureItem('국제교류', Icons.public),
-    _FeatureItem('증명서 발급', Icons.picture_as_pdf),
-    _FeatureItem('기타', Icons.more_horiz),
   ];
 
   @override
@@ -38,6 +38,38 @@ class AcademicHomePage extends StatelessWidget {
           children: features.map((item) {
             return GestureDetector(
               onTap: () {
+                if (item.title == '교육과정') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CurriculumHomePage()),
+                  );
+                  return;
+                }
+
+                if (item.title == '학사일정') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AcademicSchedulePage()),
+                  );
+                  return;
+                }
+
+                if (item.title == '수업') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ClassInfoScreen(type: 'regist', title: '수업')),
+                  );
+                  return;
+                }
+
+                if (item.title == '학적') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RecordInfoScreen(type: 'test', title: '학적')),
+                  );
+                  return;
+                }
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('${item.title} 기능은 준비 중입니다.')),
                 );
@@ -82,7 +114,9 @@ class AcademicHomePage extends StatelessWidget {
               Navigator.popUntil(context, (route) => route.isFirst);
             }),
             _buildNavButton(context, Icons.arrow_forward, '다음', () {
-              // 추후 기능
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('원하시는 버튼을 눌러주시길 바랍니다.')),
+              );
             }),
             _buildNavButton(context, Icons.settings, '설정', () {
               Navigator.push(
