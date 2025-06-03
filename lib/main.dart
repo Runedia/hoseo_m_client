@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'themes.dart';
+import 'settings_screen.dart';
 import 'notice_screen.dart';
 import 'shuttle_select_screen.dart';
-import 'settings_screen.dart';
 import 'academic_home_screen.dart';
 import 'department_screen.dart';
 import 'meal_screen.dart';
-import 'themes.dart';
 
 void main() {
   runApp(const MyApp());
@@ -45,13 +45,12 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return Builder(
-      builder: (context) => MaterialApp(
-        title: '호서대학교 공지앱1',
-        theme: _currentTheme,
-        home: const HomeScreen(),
-        debugShowCheckedModeBanner: false,
-      ),
+    return MaterialApp(
+      key: ValueKey(_currentTheme), // ✅ 이 줄이 꼭 있어야 강제 rebuild!
+      title: '호서대학교 공지앱1',
+      theme: _currentTheme,
+      home: const HomeScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -134,43 +133,20 @@ class HomeScreen extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildNavButton(
-              context,
-              icon: Icons.arrow_back,
-              label: '이전',
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            _buildNavButton(
-              context,
-              icon: Icons.home,
-              label: '홈',
-              onTap: () {
-                Navigator.popUntil(context, (route) => route.isFirst);
-              },
-            ),
-            _buildNavButton(
-              context,
-              icon: Icons.arrow_forward,
-              label: '다음',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('다음 기능은 준비 중입니다.')),
-                );
-              },
-            ),
-            _buildNavButton(
-              context,
-              icon: Icons.settings,
-              label: '설정',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                );
-              },
-            ),
+            _buildNavButton(context, icon: Icons.arrow_back, label: '이전', onTap: () {
+              Navigator.pop(context);
+            }),
+            _buildNavButton(context, icon: Icons.home, label: '홈', onTap: () {
+              Navigator.popUntil(context, (route) => route.isFirst);
+            }),
+            _buildNavButton(context, icon: Icons.arrow_forward, label: '다음', onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('다음 기능은 준비 중입니다.')),
+              );
+            }),
+            _buildNavButton(context, icon: Icons.settings, label: '설정', onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+            }),
           ],
         ),
       ),
@@ -227,9 +203,7 @@ class HomeScreen extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: isDark ? Colors.white : Colors.black,
             foregroundColor: isDark ? Colors.black : Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             minimumSize: const Size(48, 48),
           ),
           child: Icon(icon, size: 20),

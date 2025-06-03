@@ -1,26 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../themes.dart'; // HSColors를 임포트
+import '../themes.dart'; // HSColors 등 포함
 
-class ClassInfoScreen extends StatefulWidget {
+class CurriculumPage extends StatefulWidget {
   final String type;
   final String title;
 
-  const ClassInfoScreen({super.key, required this.type, required this.title});
+  const CurriculumPage({super.key, required this.type, required this.title});
 
   @override
-  State<ClassInfoScreen> createState() => _ClassInfoScreenState();
+  State<CurriculumPage> createState() => _CurriculumPageState();
 }
 
-class _ClassInfoScreenState extends State<ClassInfoScreen> {
+class _CurriculumPageState extends State<CurriculumPage> {
   bool isLoading = true;
   String? error;
-  Map<String, dynamic>? classData;
+  Map<String, dynamic>? curriculumData;
   String selectedSection = '전체';
   String searchQuery = '';
 
-  // 카드 계층별 색상 배열
   final List<Color> cardColors = [
     HSColors.HsBlue.withOpacity(0.08),
     HSColors.HsGreen.withOpacity(0.12),
@@ -31,18 +30,41 @@ class _ClassInfoScreenState extends State<ClassInfoScreen> {
   @override
   void initState() {
     super.initState();
-    fetchClassInfo();
+    fetchCurriculum();
   }
 
-  Future<void> fetchClassInfo() async {
+  Future<void> fetchCurriculum() async {
     try {
       final response = await http.get(
-        Uri.parse('http://rukeras.com:3000/eduguide/class?type=${widget.type}'),
+        Uri.parse('http://rukeras.com:3000/eduguide/curriculum?type=${widget.type}'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body)['data'] as Map<String, dynamic>;
+
+        String cleanJson(String text) {
+          return text.replaceAll(RegExp(r'<삭제:[^>]*>'), '').trim();
+        }
+
+        data.forEach((key, value) {
+          if (value is Map && value.containsKey('text')) {
+            value['text'] = cleanJson(value['text'].toString());
+          }
+          if (value is Map && value.containsKey('children')) {
+            final children = value['children'];
+            if (children is Map) {
+              children.forEach((k, v) {
+                if (v is String) {
+                  children[k] = cleanJson(v);
+                } else if (v is Map && v.containsKey('text')) {
+                  v['text'] = cleanJson(v['text'].toString());
+                }
+              });
+            }
+          }
+        });
+
         setState(() {
-          classData = data;
+          curriculumData = data;
           isLoading = false;
         });
       } else {
@@ -56,62 +78,92 @@ class _ClassInfoScreenState extends State<ClassInfoScreen> {
     }
   }
 
-  // “다만,” “단,” 등 조건부 문장은 항상 줄바꿈 처리
-  String _splitConditions(String text) {
-    return text
-        .replaceAllMapped(RegExp(r'(다만,|단,|단 |다만 )'), (m) => '\n${m[1]}')
-        .replaceAll('\n\n', '\n')
-        .trim();
+  Widget _buildFormattedText(String text, {bool numbered = false, int? index}) {
+    final List<Widget> lines = [];
+    final regex = RegExp(r'(단,|다만,)[^\n.]*[\n.]');
+    final matches = regex.allMatches(text);
+    int lastEnd = 0;
+
+    for (final match in matches) {
+      final before = text.substring(lastEnd, match.start).trim();
+      if (before.isNotEmpty) {
+        lines.add(Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            numbered && index != null ? '$index. $before' : before,
+            style: const TextStyle(fontSize: 15, height: 1.7),
+          ),
+        ));
+      }
+
+      final condition = match.group(0)!.trim();
+      lines.add(Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(condition, style: const TextStyle(fontSize: 15, height: 1.7)),
+      ));
+      lastEnd = match.end;
+    }
+
+    final after = text.substring(lastEnd).trim();
+    if (after.isNotEmpty) {
+      lines.add(Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          numbered && index != null ? '$index. $after' : after,
+          style: const TextStyle(fontSize: 15, height: 1.7),
+        ),
+      ));
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: lines);
   }
 
-  // 중첩 children 카드(재귀)
-  Widget _buildNestedCard(dynamic value, int depth) {
+  Widget _buildNestedCard(dynamic value, int depth, {int? index}) {
     final color = cardColors[depth % cardColors.length];
-    // value가 Map(중첩 children)일 경우
+
     if (value is Map && value.containsKey('text')) {
-      final String text = _splitConditions(value['text'].toString());
+      final String text = value['text'].toString();
+      final bool numbered = depth > 0;
       return Container(
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(14),
-        ),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(14)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SelectableText(text, style: const TextStyle(fontSize: 15, height: 1.7)),
-              if (value['children'] != null)
-                ..._buildChildrenCards(value['children'], depth + 1),
+              _buildFormattedText(text, numbered: numbered, index: index),
+              if (value['children'] != null) ..._buildChildrenCards(value['children'], depth + 1),
             ],
           ),
         ),
       );
     }
-    // value가 String(텍스트)일 경우
-    final cleaned = _splitConditions(value.toString());
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: SelectableText(cleaned, style: const TextStyle(fontSize: 15, height: 1.7)),
-      ),
-    );
+
+    if (value is String) {
+      final bool numbered = depth > 0;
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(14)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: _buildFormattedText(value, numbered: numbered, index: index),
+        ),
+      );
+    }
+
+    return const SizedBox();
   }
 
-  // children(Map or String) → 카드 위젯 리스트로 (재귀)
   List<Widget> _buildChildrenCards(dynamic children, int depth) {
     List<Widget> cards = [];
     if (children is Map) {
+      int i = 1;
       children.forEach((_, value) {
-        cards.add(_buildNestedCard(value, depth));
+        cards.add(_buildNestedCard(value, depth, index: i));
+        i++;
       });
     } else if (children is String) {
       cards.add(_buildNestedCard(children, depth));
@@ -119,11 +171,11 @@ class _ClassInfoScreenState extends State<ClassInfoScreen> {
     return cards;
   }
 
-  List<Widget> _buildClassList() {
-    if (classData == null) return [];
+  List<Widget> _buildCurriculumList() {
+    if (curriculumData == null) return [];
 
     List<Widget> widgets = [];
-    final filteredEntries = classData!.entries.where((entry) {
+    final filteredEntries = curriculumData!.entries.where((entry) {
       final section = entry.value as Map<String, dynamic>;
       final sectionText = section['text'].toString();
       final matchesSection = selectedSection == '전체' || selectedSection == sectionText;
@@ -140,9 +192,7 @@ class _ClassInfoScreenState extends State<ClassInfoScreen> {
       if (children != null) {
         subCards = _buildChildrenCards(children, 0);
       } else {
-        subCards = [
-          _buildNestedCard(sectionTitle, 0),
-        ];
+        subCards = [_buildNestedCard(sectionTitle, 0)];
       }
 
       widgets.add(
@@ -165,17 +215,15 @@ class _ClassInfoScreenState extends State<ClassInfoScreen> {
         ),
       );
     }
+
     return widgets;
   }
 
   @override
   Widget build(BuildContext context) {
     final sections = ['전체'] +
-        (classData?.entries
-            .map((e) => (e.value as Map<String, dynamic>)['text'].toString())
-            .toSet()
-            .toList() ??
-            []);
+        (curriculumData?.entries.map((e) => (e.value as Map<String, dynamic>)['text'].toString()).toSet().toList() ?? []);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -223,7 +271,7 @@ class _ClassInfoScreenState extends State<ClassInfoScreen> {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: _buildClassList(),
+              children: _buildCurriculumList(),
             ),
           ),
         ],

@@ -1,51 +1,63 @@
-// hs_colors.dart
-// HS 고유 색상 및 테마를 전역에서 사용하도록 정의한 파일입니다.
 import 'package:flutter/material.dart';
 
 class HSColors {
-  // HS 고유 색상 정의
-  static const Color HsBlue = Color(0xFF08449A);   // HS BLUE
-  static const Color HsGreen = Color(0xFF04A1AC);  // HS GREEN
-  static const Color HsRed = Color(0xFFBE1924);    // HS RED
-  static const Color HsGrey = Color(0xFF5E5A57);   // HS GREY
+  // 고유 색상
+  static const Color HsBlue = Color(0xFF08449A);
+  static const Color HsGreen = Color(0xFF04A1AC);
+  static const Color HsRed = Color(0xFFBE1924);
+  static const Color HsGrey = Color(0xFF5E5A57);
 
-  // 각각의 색상에 맞는 ThemeData 정의
+  // 공통 AppBar 텍스트 스타일
+  static const TextStyle _appBarTitleStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+  );
+
+  // Blue 테마
   static final ThemeData HsBlue_Theme = ThemeData(
     primaryColor: HsBlue,
     scaffoldBackgroundColor: Colors.white,
     appBarTheme: const AppBarTheme(
-      color: HsBlue,
+      backgroundColor: HsBlue,
       foregroundColor: Colors.white,
+      titleTextStyle: _appBarTitleStyle,
     ),
     brightness: Brightness.light,
   );
 
+  // Green 테마
   static final ThemeData HsGreen_Theme = ThemeData(
     primaryColor: HsGreen,
     scaffoldBackgroundColor: Colors.white,
     appBarTheme: const AppBarTheme(
-      color: HsGreen,
+      backgroundColor: HsGreen,
       foregroundColor: Colors.white,
+      titleTextStyle: _appBarTitleStyle,
     ),
     brightness: Brightness.light,
   );
 
+  // Red 테마
   static final ThemeData HsRed_Theme = ThemeData(
     primaryColor: HsRed,
     scaffoldBackgroundColor: Colors.white,
     appBarTheme: const AppBarTheme(
-      color: HsRed,
+      backgroundColor: HsRed,
       foregroundColor: Colors.white,
+      titleTextStyle: _appBarTitleStyle,
     ),
     brightness: Brightness.light,
   );
 
+  // Grey 테마
   static final ThemeData HsGrey_Theme = ThemeData(
     primaryColor: HsGrey,
     scaffoldBackgroundColor: Colors.white,
     appBarTheme: const AppBarTheme(
-      color: HsGrey,
+      backgroundColor: HsGrey,
       foregroundColor: Colors.white,
+      titleTextStyle: _appBarTitleStyle,
     ),
     brightness: Brightness.light,
   );

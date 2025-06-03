@@ -5,6 +5,7 @@ import 'dart:convert';
 class RecordInfoScreen extends StatefulWidget {
   final String type;
   final String title;
+
   const RecordInfoScreen({super.key, required this.type, required this.title});
 
   @override
@@ -26,9 +27,7 @@ class _RecordInfoScreenState extends State<RecordInfoScreen> {
 
   Future<void> fetchRecordInfo() async {
     try {
-      final response = await http.get(
-        Uri.parse('http://rukeras.com:3000/eduguide/record?type=${widget.type}'),
-      );
+      final response = await http.get(Uri.parse('http://rukeras.com:3000/eduguide/record?type=${widget.type}'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body)['data'] as Map<String, dynamic>;
         setState(() {
@@ -48,48 +47,27 @@ class _RecordInfoScreenState extends State<RecordInfoScreen> {
 
   String _cleanText(String input) {
     String cleaned = input;
-
-    // 1. 불필요 키워드/중괄호 제거
     cleaned = cleaned.replaceAll(RegExp(r'<[^>]*?>'), '');
     cleaned = cleaned.replaceAll(RegExp(r'<삭제:.*?>'), '');
     cleaned = cleaned.replaceAll(RegExp(r'\b(text|children):'), '');
     cleaned = cleaned.replaceAll(RegExp(r'[{}]'), '');
-    cleaned = cleaned.trim();
+    cleaned = cleaned.replaceAllMapped(RegExp(r'\$?(\d+):'), (m) => '\n${m.group(1)}. ');
 
-    // 2. 콤마 뒤 번호(1:, 2:, ...)는 무조건 줄바꿈
-    cleaned = cleaned.replaceAll(RegExp(r',\s*(\d+):'), '\n\$1:');
+    // ✅ "다만," 또는 "단," 앞에 줄바꿈 추가
+    cleaned = cleaned.replaceAllMapped(
+        RegExp(r'(?<!\n)(\s*)(다만,|단,)', caseSensitive: false),
+            (m) => '\n${m.group(2)}'
+    );
 
-    // 3. 여러 줄로 나누기
-    final lines = cleaned.split('\n').map((e) => e.trim()).where((e) => e.isNotEmpty);
-
-    List<String> result = [];
-    for (var line in lines) {
-      // 맨 앞 불필요한 점/기호/공백 제거
-      String l = line.replaceFirst(RegExp(r'^[•·\-\s.]+'), '');
-
-      // 4. "1: 신병 ..." → "- 1. 신병 ..."으로 변환
-      if (RegExp(r'^(\d+):').hasMatch(l)) {
-        l = l.replaceFirstMapped(RegExp(r'^(\d+):\s*'), (m) => '- ${m.group(1)}. ');
-        result.add(l);
-        continue;
-      }
-
-      // 5. 조건문/때. 줄은 - 붙이기
-      if (RegExp(r'^(단,|다만,)', caseSensitive: false).hasMatch(l) || l.endsWith('때.')) {
-        result.add('- $l');
-        continue;
-      }
-
-      // 6. 그 외는 항상 • 붙이기 (동일한 크기/굵기)
-      result.add('• $l');
-    }
-
-    return result.join('\n');
+    return cleaned.trim();
   }
 
 
-
-
+  bool _isNestedLine(String line) {
+    return RegExp(r'^\d+\.\s').hasMatch(line) ||
+        line.trim().endsWith('때') ||
+        RegExp(r'^(신병|입대 및 병무소집|직계가족 사망|기타)\s*:').hasMatch(line);
+  }
 
   List<Widget> _buildRecordList() {
     if (recordData == null) return [];
@@ -107,24 +85,41 @@ class _RecordInfoScreenState extends State<RecordInfoScreen> {
     for (final entry in filteredEntries) {
       final section = entry.value as Map<String, dynamic>;
       final sectionTitle = section['text']?.toString() ?? '';
-
-      final List<List<String>> cards = [];
-      List<String> current = [];
-
-      // "children"의 값(value)만 사용
       final children = section['children'] as Map?;
+
+      List<String> normalLines = [];
+      List<String> nestedLines = [];
+      int autoNumber = 1;
+
       if (children != null) {
         for (final raw in children.values) {
-          final cleaned = _cleanText(raw.toString());
-          final lines = cleaned.split('\n');
-
-          for (final rawLine in lines) {
-            final line = rawLine.trim();
-            if (line.isEmpty) continue;
-            current.add(line);
+          final textList = <String>[];
+          if (raw is String) {
+            textList.addAll(_cleanText(raw).split('\n'));
+          } else if (raw is Map && raw.containsKey('text')) {
+            textList.addAll(_cleanText(raw['text']).split('\n'));
+            if (raw.containsKey('children')) {
+              final subChildren = raw['children'] as Map;
+              for (final sub in subChildren.values) {
+                textList.addAll(_cleanText(sub.toString()).split('\n'));
+              }
+            }
           }
-          if (current.isNotEmpty) cards.add(List.from(current));
-          current.clear();
+
+          for (var line in textList.map((e) => e.trim()).where((e) => e.isNotEmpty)) {
+            if (RegExp(r'^\d+\.\s').hasMatch(line)) {
+              nestedLines.add(line);
+            } else if (line.endsWith('때')) {
+              nestedLines.add('- $line');
+            } else if (RegExp(r'^(신병|입대 및 병무소집|직계가족 사망|기타)\s*:').hasMatch(line)) {
+              nestedLines.add('${autoNumber++}. $line');
+            } else if (line.startsWith('다만,') || line.startsWith('단,')) {
+              // ✅ 줄바꿈만 하고 점(•) 없이 추가
+              normalLines.add(line);
+            } else {
+              normalLines.add('• $line');
+            }
+          }
         }
       }
 
@@ -141,23 +136,38 @@ class _RecordInfoScreenState extends State<RecordInfoScreen> {
               children: [
                 Text('📄 $sectionTitle', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
-                ...cards.where((g) => g.isNotEmpty).map((group) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: group.map((text) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(
-                        text,
-                        style: const TextStyle(
-                          fontSize: 15,           // 본문 크기
-                          fontWeight: FontWeight.normal, // 본문/점 모두 일반 굵기
-                          height: 1.6,
-                        ),
-                      ),
-                    )).toList(),
+                ...normalLines.map(
+                      (text) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      text,
+                      style: const TextStyle(fontSize: 15, height: 1.6),
+                    ),
                   ),
-                )),
+                ),
+                if (nestedLines.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: nestedLines.map(
+                            (text) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(
+                            text,
+                            style: const TextStyle(fontSize: 15, height: 1.6),
+                          ),
+                        ),
+                      ).toList(),
+                    ),
+                  )
+                ]
               ],
             ),
           ),
@@ -171,11 +181,7 @@ class _RecordInfoScreenState extends State<RecordInfoScreen> {
   @override
   Widget build(BuildContext context) {
     final sections = ['전체'] +
-        (recordData?.entries
-            .map((e) => (e.value as Map<String, dynamic>)['text']?.toString() ?? '')
-            .toSet()
-            .toList() ??
-            []);
+        (recordData?.entries.map((e) => (e.value as Map<String, dynamic>)['text']?.toString() ?? '').toSet().toList() ?? []);
 
     return Scaffold(
       appBar: AppBar(
@@ -194,16 +200,18 @@ class _RecordInfoScreenState extends State<RecordInfoScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: sections.map((sec) {
-                  return Padding(
+                children: sections
+                    .map(
+                      (sec) => Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: ChoiceChip(
                       label: Text(sec),
                       selected: selectedSection == sec,
                       onSelected: (_) => setState(() => selectedSection = sec),
                     ),
-                  );
-                }).toList(),
+                  ),
+                )
+                    .toList(),
               ),
             ),
           ),

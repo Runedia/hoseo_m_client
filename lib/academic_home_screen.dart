@@ -1,32 +1,35 @@
 import 'package:flutter/material.dart';
-import 'new_dart/curriculum_home_screen.dart';
-import 'new_dart/scadule_screen.dart';
-import 'new_dart/class_screen.dart';
-import 'new_dart/record_screen.dart';
+import 'package:hoseo_m_client/vo/FeatureItem.dart';
+import 'menu_6_screen/curriculum_home_screen.dart';
+import 'menu_6_screen/schedule_screen.dart';
+import 'menu_6_screen/class_screen.dart';
+import 'menu_6_screen/record_screen.dart';
 import 'settings_screen.dart';
 
 class AcademicHomePage extends StatelessWidget {
   const AcademicHomePage({super.key});
 
-  final List<_FeatureItem> features = const [
-    _FeatureItem('학사일정', Icons.schedule),
-    _FeatureItem('교육과정', Icons.book),
-    _FeatureItem('수업', Icons.class_),
-    _FeatureItem('학적', Icons.assignment_ind),
+  final List<FeatureItem> features = const [
+    FeatureItem('학사일정', Icons.schedule),
+    FeatureItem('교육과정', Icons.book),
+    FeatureItem('수업', Icons.class_),
+    FeatureItem('학적', Icons.assignment_ind),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color tileColor = isDark ? Colors.white : const Color(0xFFBE1924);
-    final Color textColor = isDark ? Colors.black : Colors.white;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final Color tileColor = theme.primaryColor.withOpacity(0.85);
+    final Color textColor = theme.appBarTheme.foregroundColor ?? Colors.white;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('학사종합'),
         centerTitle: true,
-        backgroundColor: const Color(0xFFBE1924),
-        foregroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -38,38 +41,42 @@ class AcademicHomePage extends StatelessWidget {
           children: features.map((item) {
             return GestureDetector(
               onTap: () {
-                if (item.title == '교육과정') {
+                if (item.title == features[0].title) {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const CurriculumHomePage()),
+                    MaterialPageRoute(
+                      builder: (_) => const AcademicSchedulePage(),
+                    ),
                   );
                   return;
                 }
-
-                if (item.title == '학사일정') {
+                if (item.title == features[1].title) {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const AcademicSchedulePage()),
+                    MaterialPageRoute(
+                      builder: (_) => const CurriculumHomePage(),
+                    ),
                   );
                   return;
                 }
-
-                if (item.title == '수업') {
+                if (item.title == features[2].title) {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ClassInfoScreen(type: 'regist', title: '수업')),
+                    MaterialPageRoute(
+                      builder: (_) => ClassInfoScreen(type: 'regist', title: features[2].title),
+                    ),
                   );
                   return;
                 }
-
-                if (item.title == '학적') {
+                if (item.title == features[3].title) {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const RecordInfoScreen(type: 'test', title: '학적')),
+                    MaterialPageRoute(
+                      builder: (_) => RecordInfoScreen(type: 'test', title: features[3].title),
+                    ),
                   );
                   return;
                 }
-
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('${item.title} 기능은 준비 중입니다.')),
                 );
@@ -77,9 +84,7 @@ class AcademicHomePage extends StatelessWidget {
               child: Card(
                 elevation: 3,
                 color: tileColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -157,10 +162,4 @@ class AcademicHomePage extends StatelessWidget {
       ],
     );
   }
-}
-
-class _FeatureItem {
-  final String title;
-  final IconData icon;
-  const _FeatureItem(this.title, this.icon);
 }
