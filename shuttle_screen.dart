@@ -37,8 +37,6 @@ class ShuttleScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFBE1924), // ✅ 호서대 레드
-        foregroundColor: Colors.white,
         title: const Text('셔틀버스'),
         centerTitle: true,
       ),

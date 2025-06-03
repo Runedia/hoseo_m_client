@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'shuttle_detail_screen.dart';
+import 'shuttle_screen.dart';
 
 class ShuttleSelectScreen extends StatefulWidget {
   const ShuttleSelectScreen({super.key});
@@ -30,9 +30,9 @@ class _ShuttleSelectScreenState extends State<ShuttleSelectScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ShuttleDetailScreen(
+        builder: (_) => ShuttleScreen(
+          route: _selectedRoute,
           date: _selectedDate,
-          isAsanToCheonan: _selectedRoute == '아산 → 천안',
         ),
       ),
     );
@@ -42,8 +42,6 @@ class _ShuttleSelectScreenState extends State<ShuttleSelectScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFBE1924),
-        foregroundColor: Colors.white,
         title: const Text('셔틀 노선 및 날짜 선택'),
         centerTitle: true,
       ),
