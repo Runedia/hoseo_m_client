@@ -1,4 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class DepartmentPage extends StatefulWidget {
   const DepartmentPage({super.key});
@@ -8,164 +14,314 @@ class DepartmentPage extends StatefulWidget {
 }
 
 class _DepartmentPageState extends State<DepartmentPage> {
-  final Map<String, List<String>> departments = {
-    '인문사회대학': [
-      '기독교학과', '한국언어문화학과', '영어영문학과', '중국학과', '법경찰행정학과',
-      '사회복지학과', '청소년문화상담학과', '유아교육과', '항공서비스학과', '산업심리학과',
-      '미디어커뮤니케이션학과'
-    ],
-    '경영대학': ['글로벌통상학과', '경영학부', '디지털금융경영학과', '디지털기술경영학과'],
-    '생명보건대학': [
-      '식품공학과', '제약공학과', '화장품과학과', '생명공학과', '화장품생명공학부',
-      '식품영양학과', '물리치료학과', '임상병리학과', '동물보건복지학과'
-    ],
-    '공과대학': [
-      '전기공학과', '시스템제어공학과', '기계공학과', '미래자동차공학과', '화학공학과',
-      '안전공학과', '소방방재학과', '건축학과(5년제)', '건축토목공학부', '환경공학과',
-      '정보통신공학부', '자동차 ICT공학과', '신소재공학과', '전자재료공학과'
-    ],
-    'AI융합대학': [
-      '빅데이터AI학부', '컴퓨터공학부', '게임소프트웨어학과',
-      '지능로봇학과', '전자공학과', '반도체 공학과'
-    ],
-    '예체능대학': [
-      '사회체육학과', '골프산업학과', '디자인스쿨(2025학년도 신입생 기준)',
-      '시각디자인학과', '산업디자인학과', '디지털프로덕트디자인학과',
-      '실내디자인학과', '문화영상학부', '애니메이션학과', '공연예술학부'
-    ],
-    '미래융합대학': [
-      '사회복지상담학과', '스마트경영학과', '산업안전공학과', '기계반도체공학과',
-      '안전공학과(신입 모집중지, 편입모집)', '기계ICT공학과(신입 모집중지, 편입모집)'
-    ],
-    '더:함교양대학': ['창의교양학부', '혁신융합학부'],
-    '융합학부': ['교수소개', '연계전공', '융합트랙', '마이크로디그리', 'DSC 공유대학', '융합전공'],
-    '국제학부': ['학부소개', '학사학위', '전공트랙', '교수소개'],
-  };
-
+  Map<String, List<String>> departments = {};
+  Map<String, dynamic> departmentInfo = {};
   String? expandedCollege;
   String? selectedDepartment;
+  bool isLoading = true;
+
+  Color getPrimaryColor(BuildContext context) {
+    final themeColor = Theme.of(context).primaryColor;
+    return themeColor != null && themeColor != Colors.transparent ? themeColor : const Color(0xFFBE1924);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchDepartments();
+  }
+
+  Future<File> _localFile(String filename) async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/$filename');
+  }
+
+  Future<bool> isOnline() async {
+    final result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
+  }
+
+  Future<File> downloadImage(String url) async {
+    final fileName = Uri.parse(url).pathSegments.last;
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/$fileName');
+
+    if (!(await file.exists())) {
+      final res = await http.get(Uri.parse(url));
+      if (res.statusCode == 200) {
+        await file.writeAsBytes(res.bodyBytes);
+      }
+    }
+
+    return file;
+  }
+
+  Future<void> fetchDepartments() async {
+    const apiUrl = 'http://rukeras.com:3000/departments/list?format=detailed';
+    final file = await _localFile('departments.json');
+    final online = await isOnline();
+
+    try {
+      if (online) {
+        final res = await http.get(Uri.parse(apiUrl));
+        if (res.statusCode == 200) {
+          final body = json.decode(res.body);
+          await file.writeAsString(json.encode(body));
+          final Map<String, dynamic> colleges = body['data']['colleges'];
+
+          final Map<String, List<String>> parsed = {};
+          for (final entry in colleges.entries) {
+            final collegeName = entry.key;
+            final departmentList = entry.value['departments'] as List;
+            parsed[collegeName] = departmentList.map<String>((d) => d['name'] as String).toList();
+          }
+
+          setState(() {
+            departments = parsed;
+            isLoading = false;
+          });
+        } else {}
+      } else {
+        if (await file.exists()) {
+          final content = await file.readAsString();
+          final body = json.decode(content);
+          final Map<String, dynamic> colleges = body['data']['colleges'];
+
+          final Map<String, List<String>> parsed = {};
+          for (final entry in colleges.entries) {
+            final collegeName = entry.key;
+            final departmentList = entry.value['departments'] as List;
+            parsed[collegeName] = departmentList.map<String>((d) => d['name'] as String).toList();
+          }
+
+          setState(() {
+            departments = parsed;
+            isLoading = false;
+          });
+        } else {}
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> fetchDepartmentDetail(String deptName) async {
+    final encodedDeptName = Uri.encodeComponent(deptName);
+    final url = Uri.parse('http://rukeras.com:3000/departments/info?dept=$encodedDeptName');
+    final file = await _localFile('department-$encodedDeptName.json');
+    final online = await isOnline();
+
+    try {
+      if (online) {
+        final response = await http.get(url);
+        if (response.statusCode == 200) {
+          await file.writeAsString(response.body);
+          final data = json.decode(response.body)['data'];
+
+          final List<File> localImages = [];
+          for (final img in (data['images'] ?? [])) {
+            final url = 'http://rukeras.com:3000/departments/$img';
+            final file = await downloadImage(url);
+            localImages.add(file);
+          }
+
+          File? singleLocalImage;
+          if (data['image'] != null && data['image'].toString().trim().isNotEmpty) {
+            final url = 'http://rukeras.com:3000/departments/${data['image']}';
+            singleLocalImage = await downloadImage(url);
+          }
+
+          setState(() {
+            departmentInfo = {
+              ..._parseDepartment(data),
+              'localImages': localImages,
+              'localSingleImage': singleLocalImage,
+            };
+          });
+        } else {}
+      } else {
+        if (await file.exists()) {
+          final content = await file.readAsString();
+          final data = json.decode(content)['data'];
+
+          final List<File> localImages = [];
+          for (final img in (data['images'] ?? [])) {
+            final url = 'http://rukeras.com:3000/departments/$img';
+            final file = await downloadImage(url);
+            localImages.add(file);
+          }
+
+          File? singleLocalImage;
+          if (data['image'] != null && data['image'].toString().trim().isNotEmpty) {
+            final url = 'http://rukeras.com:3000/departments/${data['image']}';
+            singleLocalImage = await downloadImage(url);
+          }
+
+          setState(() {
+            departmentInfo = {
+              ..._parseDepartment(data),
+              'localImages': localImages,
+              'localSingleImage': singleLocalImage,
+            };
+          });
+        } else {}
+      }
+    } catch (e) {}
+  }
+
+  Map<String, dynamic> _parseDepartment(Map<String, dynamic> data) {
+    return {
+      'name': data['name'] ?? '',
+      'code': data['code'] ?? '',
+      'campus': data['campus'] ?? '',
+      'college': data['college'] ?? '',
+      'type': data['type'] ?? '',
+      'description': data['description'] ?? '',
+      'professors': data['professor'] ?? [],
+      'curriculum': data['curriculum'] ?? [],
+      'facilities': data['facilities'] ?? [],
+      'phone': data['contact']?['phone'] ?? '',
+      'email': data['contact']?['email'] ?? '',
+      'office': data['contact']?['office'] ?? '',
+      'images': data['images'] ?? [],
+      'image': data['image'] ?? '',
+      'location': data['location'] ?? '',
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = getPrimaryColor(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('학과정보', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFFBE1924),
+        title: const Text('학과정보', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: selectedDepartment == null
-            ? _buildCollegeList()
-            : _buildDepartmentDetail(),
-      ),
-    );
-  }
+      body:
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Padding(
+                padding: const EdgeInsets.all(16),
+                child:
+                    selectedDepartment == null
+                        ? ListView(
+                          children:
+                              departments.entries.map((entry) {
+                                final college = entry.key;
+                                final deptList = entry.value;
 
-  Widget _buildCollegeList() {
-    return ListView(
-      children: departments.entries.map((entry) {
-        final college = entry.key;
-        final deptList = entry.value;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFBE1924),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: primaryColor,
+                                        padding: const EdgeInsets.symmetric(vertical: 16),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          expandedCollege = expandedCollege == college ? null : college;
+                                        });
+                                      },
+                                      child: Text(college, style: const TextStyle(color: Colors.white)),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    if (expandedCollege == college)
+                                      ...deptList.map((dept) {
+                                        return Container(
+                                          margin: const EdgeInsets.only(bottom: 8),
+                                          child: OutlinedButton(
+                                            style: OutlinedButton.styleFrom(
+                                              side: BorderSide(color: primaryColor),
+                                              padding: const EdgeInsets.symmetric(vertical: 16),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                                            ),
+                                            onPressed: () async {
+                                              setState(() {
+                                                selectedDepartment = dept;
+                                                departmentInfo = {};
+                                              });
+                                              await fetchDepartmentDetail(dept);
+                                            },
+                                            child: Text(dept, style: const TextStyle(color: Colors.black)),
+                                          ),
+                                        );
+                                      }),
+                                    const SizedBox(height: 12),
+                                  ],
+                                );
+                              }).toList(),
+                        )
+                        : _buildDepartmentDetail(primaryColor),
               ),
-              onPressed: () {
-                setState(() {
-                  expandedCollege = expandedCollege == college ? null : college;
-                });
-              },
-              child: Text(college, style: const TextStyle(color: Colors.white)),
-            ),
-            const SizedBox(height: 4),
-            if (expandedCollege == college)
-              ...deptList.map((department) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFBE1924)),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.zero,
-                    ),
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      selectedDepartment = department;
-                    });
-                  },
-                  child: Text(department,
-                      style: const TextStyle(color: Colors.black)),
-                ),
-              )),
-            const SizedBox(height: 12),
-          ],
-        );
-      }).toList(),
     );
   }
 
-  Widget _buildDepartmentDetail() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        OutlinedButton(
-          onPressed: () {},
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Color(0xFFBE1924)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.zero,
+  Widget _buildDepartmentDetail(Color primaryColor) {
+    final name = departmentInfo['name'] ?? '';
+    final college = departmentInfo['college'] ?? '';
+    final type = departmentInfo['type'] ?? '';
+    final description = departmentInfo['description'] ?? '';
+    final phone = departmentInfo['phone'];
+    final email = departmentInfo['email'];
+    final location = departmentInfo['location'];
+    final localImages = departmentInfo['localImages'] ?? [];
+    final localSingleImage = departmentInfo['localSingleImage'];
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OutlinedButton(
+            onPressed: () {},
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: primaryColor),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
+            child: Text(name, style: const TextStyle(color: Colors.black)),
           ),
-          child: Text(selectedDepartment ?? '',
-              style: const TextStyle(color: Colors.black)),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 16),
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFBE1924)),
-          ),
-          child: const Center(child: Text('학과 대표 이미지')),
-        ),
-        _infoBox('위치 | 대표번호'),
-        _infoBox('학과 설명'),
-        _infoBox('기타 이어지는 설명...'),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () {
-            setState(() {
-              selectedDepartment = null;
-            });
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFBE1924),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.zero,
+          if (localImages.isNotEmpty)
+            ...localImages.map<Widget>(
+              (file) => Container(margin: const EdgeInsets.only(bottom: 8), child: Image.file(file)),
             ),
+          if (localImages.isEmpty && localSingleImage != null)
+            Container(margin: const EdgeInsets.only(bottom: 8), child: Image.file(localSingleImage)),
+          if (college.isNotEmpty) _infoBox('단과대학: $college', primaryColor),
+          if (type.isNotEmpty) _infoBox('구분: $type', primaryColor),
+          if (description.isNotEmpty) _infoBox('설명: $description', primaryColor),
+          if (phone != null && phone.toString().trim().isNotEmpty) _infoBox('대표번호: $phone', primaryColor),
+          if (location != null && location.toString().trim().isNotEmpty) _infoBox('위치: $location', primaryColor),
+          if (email != null && email.toString().trim().isNotEmpty) _infoBox('이메일: $email', primaryColor),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                selectedDepartment = null;
+                departmentInfo = {};
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            ),
+            child: const Text('뒤로가기', style: TextStyle(color: Colors.white)),
           ),
-          child: const Text('뒤로가기', style: TextStyle(color: Colors.white)),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _infoBox(String text) {
+  Widget _infoBox(String text, Color primaryColor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFBE1924)),
-      ),
+      decoration: BoxDecoration(border: Border.all(color: primaryColor)),
       child: Text(text),
     );
   }
