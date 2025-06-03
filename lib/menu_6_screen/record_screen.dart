@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:hoseo_m_client/utils/common_scaffold.dart';
+import 'package:http/http.dart' as http;
 
 class RecordInfoScreen extends StatefulWidget {
   final String type;
@@ -54,14 +55,10 @@ class _RecordInfoScreenState extends State<RecordInfoScreen> {
     cleaned = cleaned.replaceAllMapped(RegExp(r'\$?(\d+):'), (m) => '\n${m.group(1)}. ');
 
     // ✅ "다만," 또는 "단," 앞에 줄바꿈 추가
-    cleaned = cleaned.replaceAllMapped(
-        RegExp(r'(?<!\n)(\s*)(다만,|단,)', caseSensitive: false),
-            (m) => '\n${m.group(2)}'
-    );
+    cleaned = cleaned.replaceAllMapped(RegExp(r'(?<!\n)(\s*)(다만,|단,)', caseSensitive: false), (m) => '\n${m.group(2)}');
 
     return cleaned.trim();
   }
-
 
   bool _isNestedLine(String line) {
     return RegExp(r'^\d+\.\s').hasMatch(line) ||
@@ -137,12 +134,9 @@ class _RecordInfoScreenState extends State<RecordInfoScreen> {
                 Text('📄 $sectionTitle', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 ...normalLines.map(
-                      (text) => Padding(
+                  (text) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
-                    child: Text(
-                      text,
-                      style: const TextStyle(fontSize: 15, height: 1.6),
-                    ),
+                    child: Text(text, style: const TextStyle(fontSize: 15, height: 1.6)),
                   ),
                 ),
                 if (nestedLines.isNotEmpty) ...[
@@ -156,18 +150,18 @@ class _RecordInfoScreenState extends State<RecordInfoScreen> {
                     padding: const EdgeInsets.all(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: nestedLines.map(
-                            (text) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Text(
-                            text,
-                            style: const TextStyle(fontSize: 15, height: 1.6),
-                          ),
-                        ),
-                      ).toList(),
+                      children:
+                          nestedLines
+                              .map(
+                                (text) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  child: Text(text, style: const TextStyle(fontSize: 15, height: 1.6)),
+                                ),
+                              )
+                              .toList(),
                     ),
-                  )
-                ]
+                  ),
+                ],
               ],
             ),
           ),
@@ -180,63 +174,60 @@ class _RecordInfoScreenState extends State<RecordInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sections = ['전체'] +
-        (recordData?.entries.map((e) => (e.value as Map<String, dynamic>)['text']?.toString() ?? '').toSet().toList() ?? []);
+    final sections =
+        ['전체'] +
+        (recordData?.entries.map((e) => (e.value as Map<String, dynamic>)['text']?.toString() ?? '').toSet().toList() ??
+            []);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        backgroundColor: const Color(0xFFBE1924),
-        foregroundColor: Colors.white,
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : error != null
-          ? Center(child: Text('❌ 오류 발생: $error'))
-          : Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: sections
-                    .map(
-                      (sec) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: ChoiceChip(
-                      label: Text(sec),
-                      selected: selectedSection == sec,
-                      onSelected: (_) => setState(() => selectedSection = sec),
+    return CommonScaffold(
+      title: widget.title,
+      body:
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : error != null
+              ? Center(child: Text('❌ 오류 발생: $error'))
+              : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children:
+                            sections
+                                .map(
+                                  (sec) => Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    child: ChoiceChip(
+                                      label: Text(sec),
+                                      selected: selectedSection == sec,
+                                      onSelected: (_) => setState(() => selectedSection = sec),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                      ),
                     ),
                   ),
-                )
-                    .toList(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search),
+                        hintText: '검색',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      onChanged: (value) => setState(() => searchQuery = value),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView(padding: const EdgeInsets.symmetric(horizontal: 16), children: _buildRecordList()),
+                  ),
+                ],
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: '검색',
-                border: OutlineInputBorder(),
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              ),
-              onChanged: (value) => setState(() => searchQuery = value),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: _buildRecordList(),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

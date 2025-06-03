@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.rukeras.hoseo_m_client"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+//    ndkVersion = flutter.ndkVersion
     ndkVersion = "27.0.12077973"
 
     compileOptions {

@@ -1,76 +1,116 @@
 import 'package:flutter/material.dart';
-import 'themes.dart';
-import 'settings_screen.dart';
-import 'notice_screen.dart';
-import 'shuttle_select_screen.dart';
-import 'academic_home_screen.dart';
-import 'department_screen.dart';
-import 'meal_screen.dart';
+import 'package:hoseo_m_client/menu_1_screen/notice_screen.dart';
+import 'package:hoseo_m_client/menu_2_screen/shuttle_select_screen.dart';
+import 'package:hoseo_m_client/menu_3_screen/department_screen.dart';
+import 'package:hoseo_m_client/menu_4_screen/meal_schedule.dart';
+import 'package:hoseo_m_client/menu_5_screen/campus_map.dart';
+import 'package:hoseo_m_client/menu_6_screen/academic_home_screen.dart';
+import 'package:hoseo_m_client/settings_screen.dart';
+import 'package:hoseo_m_client/utils/animations/page_transitions.dart';
+import 'package:hoseo_m_client/utils/common_scaffold.dart';
+import 'package:hoseo_m_client/utils/themes/theme_preferences.dart';
+import 'package:hoseo_m_client/utils/themes/themes.dart';
+import 'package:hoseo_m_client/vo/FeatureItem.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
-  static _MyAppState? of(BuildContext context) =>
-      context.findAncestorStateOfType<_MyAppState>();
+  static _MyAppState? of(BuildContext context) => context.findAncestorStateOfType<_MyAppState>();
 
   @override
   State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  ThemeData _currentTheme = HSColors.HsRed_Theme;
+  Future<String>? _themeLoader;
 
-  void updateTheme(String themeName) {
+  @override
+  void initState() {
+    super.initState();
+    _themeLoader = ThemePreferences.getTheme();
+  }
+
+  // 테마 데이터 가져오기
+  ThemeData _getThemeData(String themeName) {
+    switch (themeName) {
+      case 'HS Blue':
+        return HSColors.hsBlueTheme;
+      case 'HS Green':
+        return HSColors.hsGreenTheme;
+      case 'HS Grey':
+        return HSColors.hsGreyTheme;
+      case 'HS Red':
+      default:
+        return HSColors.hsRedTheme;
+    }
+  }
+
+  // 테마 업데이트 및 저장
+  void updateTheme(String themeName) async {
+    await ThemePreferences.saveTheme(themeName);
     setState(() {
-      switch (themeName) {
-        case 'HS Blue':
-          _currentTheme = HSColors.HsBlue_Theme;
-          break;
-        case 'HS Green':
-          _currentTheme = HSColors.HsGreen_Theme;
-          break;
-        case 'HS Grey':
-          _currentTheme = HSColors.HsGrey_Theme;
-          break;
-        case 'HS Red':
-        default:
-          _currentTheme = HSColors.HsRed_Theme;
-      }
+      _themeLoader = Future.value(themeName);
     });
+  }
+
+  // 현재 테마 이름 가져오기 (동기적으로)
+  String getCurrentThemeName() {
+    // FutureBuilder의 snapshot에서 현재 테마 이름을 가져오는 방법이 필요
+    // 일시적으로 기본값 반환
+    return 'HS Red';
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      key: ValueKey(_currentTheme), // ✅ 이 줄이 꼭 있어야 강제 rebuild!
-      title: '호서대학교 공지앱1',
-      theme: _currentTheme,
-      home: const HomeScreen(),
-      debugShowCheckedModeBanner: false,
+    return FutureBuilder<String>(
+      future: _themeLoader,
+      builder: (context, snapshot) {
+        // 데이터가 로드되지 않았을 때 로딩 화면 표시
+        if (!snapshot.hasData) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: Scaffold(
+              backgroundColor: HSColors.hsRedTheme.primaryColor,
+              body: const Center(child: CircularProgressIndicator(color: Colors.white)),
+            ),
+          );
+        }
+
+        final themeName = snapshot.data!;
+        final themeData = _getThemeData(themeName);
+
+        return MaterialApp(
+          title: '호서대학교 모바일',
+          theme: themeData,
+          home: HomeScreen(currentThemeName: themeName),
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final String currentThemeName;
 
-  final List<_FeatureItem> topFeatures = const [
-    _FeatureItem("공지사항", Icons.campaign),
-    _FeatureItem("셔틀버스", Icons.directions_bus),
-    _FeatureItem("학과정보", Icons.school),
-    _FeatureItem("식단표", Icons.restaurant_menu),
-    _FeatureItem("캠퍼스맵", Icons.map),
-    _FeatureItem("학사종합", Icons.book),
+  const HomeScreen({super.key, required this.currentThemeName});
+
+  final List<FeatureItem> topFeatures = const [
+    FeatureItem("공지사항", Icons.campaign),
+    FeatureItem("셔틀버스", Icons.directions_bus),
+    FeatureItem("학과정보", Icons.school),
+    FeatureItem("식단표", Icons.restaurant_menu),
+    FeatureItem("캠퍼스맵", Icons.map),
+    FeatureItem("학사종합", Icons.book),
   ];
 
-  final List<_FeatureItem> bottomFeatures = const [
-    _FeatureItem("LMS", Icons.laptop),
-    _FeatureItem("통합포털", Icons.web),
-  ];
+  final List<FeatureItem> bottomFeatures = const [FeatureItem("LMS", Icons.laptop), FeatureItem("통합포털", Icons.web)];
 
   @override
   Widget build(BuildContext context) {
@@ -79,22 +119,18 @@ class HomeScreen extends StatelessWidget {
     final double fontSize = size.width * 0.035;
     final double spacing = size.width * 0.025;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("호서대학교 앱"),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
-      ),
+    return CommonScaffold(
+      title: "호서대학교 모바일",
+      showBackButton: false,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: () {
+            NavigationHistory.instance.onNavigate('SettingsScreen');
+            Navigator.push(context, PageAnimations.fade(const SettingsScreen()));
+          },
+        ),
+      ],
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.all(spacing),
@@ -104,76 +140,72 @@ class HomeScreen extends StatelessWidget {
                 spacing: spacing,
                 runSpacing: spacing,
                 alignment: WrapAlignment.center,
-                children: topFeatures.map((item) {
-                  return SizedBox(
-                    width: (size.width - spacing * 4) / 3,
-                    height: size.width * 0.25,
-                    child: _buildCard(context, item, iconSize, fontSize),
-                  );
-                }).toList(),
+                children:
+                    topFeatures.map((item) {
+                      return SizedBox(
+                        width: (size.width - spacing * 4) / 3,
+                        height: size.width * 0.25,
+                        child: _buildCard(context, item, iconSize, fontSize),
+                      );
+                    }).toList(),
               ),
               SizedBox(height: spacing * 2),
               Column(
-                children: bottomFeatures.map((item) {
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: spacing),
-                    child: FractionallySizedBox(
-                      widthFactor: 0.95,
-                      child: _buildCard(context, item, iconSize, fontSize),
-                    ),
-                  );
-                }).toList(),
+                children:
+                    bottomFeatures.map((item) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: spacing),
+                        child: FractionallySizedBox(
+                          widthFactor: 1,
+                          child: _buildCard(context, item, iconSize, fontSize),
+                        ),
+                      );
+                    }).toList(),
               ),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.only(bottom: 20.0, top: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavButton(context, icon: Icons.arrow_back, label: '이전', onTap: () {
-              Navigator.pop(context);
-            }),
-            _buildNavButton(context, icon: Icons.home, label: '홈', onTap: () {
-              Navigator.popUntil(context, (route) => route.isFirst);
-            }),
-            _buildNavButton(context, icon: Icons.arrow_forward, label: '다음', onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('다음 기능은 준비 중입니다.')),
-              );
-            }),
-            _buildNavButton(context, icon: Icons.settings, label: '설정', onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
-            }),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _buildCard(BuildContext context, _FeatureItem item, double iconSize, double fontSize) {
+  Widget _buildCard(BuildContext context, FeatureItem item, double iconSize, double fontSize) {
     return Card(
       color: Theme.of(context).primaryColor,
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () {
+        onTap: () async {
           if (item.title == "공지사항") {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const NoticeScreen()));
+            NavigationHistory.instance.onNavigate('NoticeScreen');
+            Navigator.push(context, PageAnimations.fade(const NoticeScreen()));
           } else if (item.title == "셔틀버스") {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const ShuttleSelectScreen()));
-          } else if (item.title == "학사종합") {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => AcademicHomePage()));
+            NavigationHistory.instance.onNavigate('ShuttleSelectScreen');
+            Navigator.push(context, PageAnimations.fade(const ShuttleSelectScreen()));
           } else if (item.title == "학과정보") {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const DepartmentPage()));
+            NavigationHistory.instance.onNavigate('DepartmentPage');
+            Navigator.push(context, PageAnimations.fade(const DepartmentPage()));
           } else if (item.title == "식단표") {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const MealPage()));
+            NavigationHistory.instance.onNavigate('MealPage');
+            Navigator.push(context, PageAnimations.fade(const MealPage()));
+          } else if (item.title == "캠퍼스맵") {
+            NavigationHistory.instance.onNavigate('CampusMapPage');
+            Navigator.push(context, PageAnimations.fade(const CampusMapPage()));
+          } else if (item.title == "학사종합") {
+            NavigationHistory.instance.onNavigate('AcademicHomePage');
+            Navigator.push(context, PageAnimations.fade(const AcademicHomePage()));
+          } else if (item.title == "LMS") {
+            var url = Uri.parse('https://learn.hoseo.ac.kr/');
+            if (await canLaunchUrl(url)) {
+              launchUrl(url);
+            }
+          } else if (item.title == "통합포털") {
+            var url = Uri.parse('https://portal.hoseo.edu/');
+            if (await canLaunchUrl(url)) {
+              launchUrl(url);
+            }
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${item.title} 클릭됨')),
-            );
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${item.title} 클릭됨')));
           }
         },
         borderRadius: BorderRadius.circular(16),
@@ -190,33 +222,4 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildNavButton(BuildContext context,
-      {required IconData icon, required String label, required VoidCallback onTap}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ElevatedButton(
-          onPressed: onTap,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isDark ? Colors.white : Colors.black,
-            foregroundColor: isDark ? Colors.black : Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            minimumSize: const Size(48, 48),
-          ),
-          child: Icon(icon, size: 20),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
-    );
-  }
-}
-
-class _FeatureItem {
-  final String title;
-  final IconData icon;
-  const _FeatureItem(this.title, this.icon);
 }
