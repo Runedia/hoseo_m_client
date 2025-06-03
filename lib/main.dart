@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hoseo_m_client/menu_1_screen/notice_screen.dart';
 import 'package:hoseo_m_client/menu_2_screen/shuttle_select_screen.dart';
 import 'package:hoseo_m_client/menu_3_screen/department_screen.dart';
@@ -90,6 +91,16 @@ class _MyAppState extends State<MyApp> {
           theme: themeData,
           home: HomeScreen(currentThemeName: themeName),
           debugShowCheckedModeBanner: false,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('ko', 'KR'),
+            Locale('en', 'US'),
+          ],
+          locale: const Locale('ko', 'KR'),
         );
       },
     );
