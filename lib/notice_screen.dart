@@ -24,6 +24,7 @@ class _NoticeScreenState extends State<NoticeScreen> {
   String searchQuery = '';
   bool isLoading = true;
 
+
   @override
   void initState() {
     super.initState();

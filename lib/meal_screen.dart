@@ -14,7 +14,7 @@ class _MealPageState extends State<MealPage> {
   final noticesData = {
     '교직원회관 식당': [
       {'title': '4월 5주 주간식단표', 'author': '총무팀', 'date': '2025-04-28'},
-      {'title': '4월 4주 주간식단표', 'author': '총무팀', 'date': '2025-04-21'},[]
+      {'title': '4월 4주 주간식단표', 'author': '총무팀', 'date': '2025-04-21'},
       {'title': '4월 3주 주간식단표', 'author': '총무팀', 'date': '2025-04-14'},
       {'title': '4월 2주 주간식단표', 'author': '총무팀', 'date': '2025-04-07'},
       {'title': '4월 1주 주간식단표', 'author': '총무팀', 'date': '2025-03-31'},

@@ -82,5 +82,6 @@ class _NoticeWebViewPageState extends State<NoticeWebViewPage> {
       ),
       body: WebViewWidget(controller: _controller),
     );
+
   }
 }
