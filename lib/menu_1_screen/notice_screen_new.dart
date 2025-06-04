@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:hoseo_m_client/menu_1_screen/notice_webview_enhanced.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
 import 'package:hoseo_m_client/utils/go_router_history.dart';
 
@@ -27,49 +26,59 @@ class _NoticeScreenNewState extends State<NoticeScreenNew> {
   @override
   void initState() {
     super.initState();
-    // 전체 공지사항 가져오기 (서버에서 카테고리별 필터링을 지원하지 않음)
-    fetchNotices();
+    // 초기 로드 시 선택된 카테고리로 공지사항 가져오기
+    fetchNotices(categoryType: typeMapping[selectedCategory]);
   }
 
   Future<void> fetchNotices({String? categoryType}) async {
+    // if (!mounted) return; // 위젯이 dispose된 경우 조기 반환
+
     setState(() => isLoading = true);
     try {
-      // 카테고리가 지정되어 있으면 해당 카테고리로 요청, 없으면 전체 공지사항 요청
+      // 서버에서 카테고리별 필터링 지원
       String url = 'http://rukeras.com:3000/notice/list?page=1&pageSize=30';
       if (categoryType != null && categoryType.isNotEmpty) {
         url += '&type=$categoryType';
       }
-      
+
       print('[DEBUG] 공지사항 요청 URL: $url');
       print('[DEBUG] 선택된 카테고리: $selectedCategory');
       print('[DEBUG] 카테고리 코드: $categoryType');
-      
+
       final response = await Dio().get(url);
       if (response.statusCode == 200) {
         final responseData = List<Map<String, dynamic>>.from(response.data);
         print('[DEBUG] 받은 공지사항 수: ${responseData.length}');
-        
+
         // 받은 데이터의 카테고리 확인
         if (responseData.isNotEmpty) {
           final categories = responseData.map((notice) => notice['type']).toSet();
           print('[DEBUG] 받은 데이터의 카테고리들: $categories');
-          
+
           // 첫 번째 공지사항 샘플 출력
           print('[DEBUG] 첫 번째 공지사항 샘플:');
           print('  - 제목: ${responseData[0]['title']}');
           print('  - 카테고리: ${responseData[0]['type']}');
           print('  - 작성자: ${responseData[0]['author']}');
+        } else {
+          print('[DEBUG] 빈 데이터 - 해당 카테고리에 공지사항이 없음');
         }
-        
-        setState(() {
-          notices = responseData;
-          isLoading = false;
-        });
-        print('[DEBUG] UI 업데이트 완료');
+
+        // mounted 체크 후 setState 호출
+        if (mounted) {
+          setState(() {
+            notices = responseData;
+            isLoading = false;
+          });
+          print('[DEBUG] UI 업데이트 완료 - 서버 사이드 필터링 사용');
+        }
       }
     } catch (e) {
       print('[DEBUG] 공지 불러오기 오류: $e');
-      setState(() => isLoading = false);
+      // mounted 체크 후 setState 호출
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -100,12 +109,13 @@ class _NoticeScreenNewState extends State<NoticeScreenNew> {
 
   @override
   Widget build(BuildContext context) {
-    // 카테고리별 필터링을 제거하고 검색어만 적용
-    final filteredNotices = notices.where((notice) {
-      final title = (notice['title'] ?? '').toString();
-      final matchesSearch = title.toLowerCase().contains(searchQuery.toLowerCase());
-      return matchesSearch;
-    }).toList();
+    // 서버에서 카테고리별 필터링을 지원하므로 검색어만 클라이언트에서 필터링
+    final filteredNotices =
+        notices.where((notice) {
+          final title = (notice['title'] ?? '').toString();
+          final matchesSearch = title.toLowerCase().contains(searchQuery.toLowerCase());
+          return matchesSearch;
+        }).toList();
 
     return CommonScaffold(
       title: '공지사항',
@@ -133,9 +143,8 @@ class _NoticeScreenNewState extends State<NoticeScreenNew> {
                                     selected: isSelected,
                                     onSelected: (_) {
                                       print('[DEBUG] 카테고리 변경: $cat');
-                                      print('[DEBUG] 카테고리 코드: ${typeMapping[cat]}');
                                       setState(() => selectedCategory = cat);
-                                      // 카테고리 변경 시 해당 카테곣c리의 공지사항 다시 가져오기
+                                      // 카테고리 변경 시 해당 카테고리의 공지사항 다시 가져오기
                                       fetchNotices(categoryType: typeMapping[cat]);
                                     },
                                   ),
@@ -216,10 +225,11 @@ class _NoticeScreenNewState extends State<NoticeScreenNew> {
               final htmlPath = detail['content'];
               if (htmlPath != null && htmlPath.isNotEmpty) {
                 final fullUrl = 'http://rukeras.com:3000/$htmlPath';
-                
+
                 // GoRouterHistory를 사용하여 공지사항 상세보기로 이동
-                final routeUrl = '/notice/detail?title=${Uri.encodeComponent(detail['title'] ?? '')}&url=${Uri.encodeComponent(fullUrl)}&chidx=${Uri.encodeComponent(chidx.toString())}&author=${Uri.encodeComponent(notice['author'] ?? '')}&createDt=${Uri.encodeComponent(notice['create_dt'] ?? '')}';
-                
+                final routeUrl =
+                    '/notice/detail?title=${Uri.encodeComponent(detail['title'] ?? '')}&url=${Uri.encodeComponent(fullUrl)}&chidx=${Uri.encodeComponent(chidx.toString())}&author=${Uri.encodeComponent(notice['author'] ?? '')}&createDt=${Uri.encodeComponent(notice['create_dt'] ?? '')}';
+
                 GoRouterHistory.instance.pushWithHistory(context, routeUrl);
               }
             }
