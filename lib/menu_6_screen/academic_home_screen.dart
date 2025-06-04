@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hoseo_m_client/menu_6_screen/class_screen.dart';
-import 'package:hoseo_m_client/menu_6_screen/curriculum_home_screen.dart';
-import 'package:hoseo_m_client/menu_6_screen/record_screen.dart';
-import 'package:hoseo_m_client/menu_6_screen/schedule_home_screen.dart';
-import 'package:hoseo_m_client/utils/animations/page_transitions.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
+import 'package:hoseo_m_client/utils/go_router_history.dart';
 import 'package:hoseo_m_client/vo/FeatureItem.dart';
 
 class AcademicHomePage extends StatelessWidget {
@@ -33,30 +30,19 @@ class AcademicHomePage extends StatelessWidget {
                 return GestureDetector(
                   onTap: () {
                     if (item.title == features[0].title) {
-                      // Navigator.push(context, MaterialPageRoute(builder: (_) => const AcademicSchedulePage()));
-                      NavigationHistory.instance.onNavigate('ScheduleHomePage');
-                      Navigator.push(context, PageAnimations.fade(const ScheduleHomePage()));
+                      GoRouterHistory.instance.pushWithHistory(context, '/academic/schedule');
                       return;
                     }
                     if (item.title == features[1].title) {
-                      NavigationHistory.instance.onNavigate('CurriculumHomePage');
-                      Navigator.push(context, PageAnimations.fade(const CurriculumHomePage()));
+                      GoRouterHistory.instance.pushWithHistory(context, '/academic/curriculum');
                       return;
                     }
                     if (item.title == features[2].title) {
-                      NavigationHistory.instance.onNavigate('ClassInfoScreen');
-                      Navigator.push(
-                        context,
-                        PageAnimations.fade(ClassInfoScreen(type: 'regist', title: features[2].title)),
-                      );
+                      GoRouterHistory.instance.pushWithHistory(context, '/academic/class?type=regist&title=${features[2].title}');
                       return;
                     }
                     if (item.title == features[3].title) {
-                      NavigationHistory.instance.onNavigate('RecordInfoScreen');
-                      Navigator.push(
-                        context,
-                        PageAnimations.fade(RecordInfoScreen(type: 'test', title: features[3].title)),
-                      );
+                      GoRouterHistory.instance.pushWithHistory(context, '/academic/record?type=test&title=${features[3].title}');
                       return;
                     }
                   },

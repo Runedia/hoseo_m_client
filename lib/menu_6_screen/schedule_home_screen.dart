@@ -30,9 +30,9 @@ class ScheduleHomePage extends StatelessWidget {
                   onTap: () {
                     // 네비게이션 히스토리에 추가
                     if (item.title == '목록형') {
-                      NavigationHistory.instance.onNavigate('AcademicSchedulePage');
+                      // NavigationHistory.instance.onNavigate('AcademicSchedulePage');
                     } else if (item.title == '달력형') {
-                      NavigationHistory.instance.onNavigate('CalendarSchedulePage');
+                      // NavigationHistory.instance.onNavigate('CalendarSchedulePage');
                     }
                     
                     // PageAnimations를 사용하여 이동

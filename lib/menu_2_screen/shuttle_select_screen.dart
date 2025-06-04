@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hoseo_m_client/menu_2_screen/shuttle_detail_screen.dart';
-import 'package:hoseo_m_client/utils/animations/page_transitions.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
+import 'package:hoseo_m_client/utils/go_router_history.dart';
 
 class ShuttleSelectScreen extends StatefulWidget {
   const ShuttleSelectScreen({super.key});
@@ -35,11 +35,9 @@ class _ShuttleSelectScreenState extends State<ShuttleSelectScreen> {
   }
 
   void _goToShuttleScreen() {
-    NavigationHistory.instance.onNavigate('ShuttleDetailScreen');
-    Navigator.push(
-      context,
-      PageAnimations.fade(ShuttleDetailScreen(date: _selectedDate, isAsanToCheonan: _selectedRoute == '아산 → 천안')),
-    );
+    final isAsanToCheonan = _selectedRoute == '아산 → 천안';
+    final dateStr = _selectedDate.toIso8601String();
+    GoRouterHistory.instance.pushWithHistory(context, '/shuttle/detail?date=$dateStr&isAsan=$isAsanToCheonan');
   }
 
   @override

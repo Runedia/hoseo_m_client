@@ -52,7 +52,7 @@ class _AcademicSchedulePageState extends State<AcademicSchedulePage> {
       // API 호출 실패 시 로컬 데이터로 폴백
       print('[DEBUG] fetchSchedule 오류 발생: $e');
       print('[DEBUG] 로컬 데이터로 폴백 시작');
-      await _loadLocalData();
+      await _loadLocalData(showOfflineMessage: true); // 오프라인 메시지 표시
       print('[DEBUG] 폴백 완료');
     }
     print('[DEBUG] fetchSchedule 종료');
@@ -90,7 +90,7 @@ class _AcademicSchedulePageState extends State<AcademicSchedulePage> {
     }
   }
 
-  Future<void> _loadLocalData() async {
+  Future<void> _loadLocalData({bool showOfflineMessage = false}) async {
     print('[DEBUG] _loadLocalData 시작');
     try {
       print('[DEBUG] 로컬 데이터베이스에서 데이터 조회 시작');
@@ -98,6 +98,18 @@ class _AcademicSchedulePageState extends State<AcademicSchedulePage> {
 
       if (localData != null) {
         print('[DEBUG] 로컬 데이터 찾음 - 데이터 크기: ${localData.length}개 항목');
+        
+        // 오프라인 데이터 사용 안내
+        if (showOfflineMessage && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('오프라인 데이터입니다.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        
         setState(() {
           scheduleData = localData;
           isLoading = false;

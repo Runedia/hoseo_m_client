@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hoseo_m_client/menu_4_screen/meal_list_screen.dart';
-import 'package:hoseo_m_client/utils/animations/page_transitions.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
+import 'package:hoseo_m_client/utils/go_router_history.dart';
 
 class MealPage extends StatefulWidget {
   const MealPage({super.key});
@@ -32,13 +32,7 @@ class _MealPageState extends State<MealPage> {
                 text: cafeteria,
                 onPressed: () {
                   final action = cafeteriaActions[cafeteria]!;
-                  // 히스토리에 현재 페이지 추가
-                  NavigationHistory.instance.onNavigate('MealList');
-
-                  Navigator.push(
-                    context,
-                    PageAnimations.fade(MealListScreen(cafeteriaName: cafeteria, action: action)),
-                  );
+                  GoRouterHistory.instance.pushWithHistory(context, '/meal/list?cafeteriaName=$cafeteria&action=$action');
                 },
               ),
             )

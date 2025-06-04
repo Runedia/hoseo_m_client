@@ -340,6 +340,122 @@ class DatabaseManager {
     }
   }
 
+  // 학적 데이터 저장
+  Future<void> saveRecordData(String type, Map<String, dynamic> data) async {
+    try {
+      final db = await database;
+      final jsonData = jsonEncode(data);
+      final now = DateTime.now().toIso8601String();
+
+      // 테이블이 없으면 생성
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS record_data (
+          id INTEGER PRIMARY KEY,
+          type TEXT NOT NULL UNIQUE,
+          json_data TEXT NOT NULL,
+          last_updated TEXT NOT NULL
+        )
+      ''');
+
+      await db.insert('record_data', {
+        'type': type,
+        'json_data': jsonData,
+        'last_updated': now,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    } catch (e) {
+      throw Exception('학적 데이터 저장 실패: $e');
+    }
+  }
+
+  // 학적 데이터 가져오기
+  Future<Map<String, dynamic>?> getRecordData(String type) async {
+    try {
+      final db = await database;
+
+      // 테이블이 없으면 생성
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS record_data (
+          id INTEGER PRIMARY KEY,
+          type TEXT NOT NULL UNIQUE,
+          json_data TEXT NOT NULL,
+          last_updated TEXT NOT NULL
+        )
+      ''');
+
+      final List<Map<String, dynamic>> maps = await db.query(
+        'record_data',
+        where: 'type = ?',
+        whereArgs: [type],
+      );
+
+      if (maps.isNotEmpty) {
+        final jsonData = maps.first['json_data'] as String;
+        return jsonDecode(jsonData) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      throw Exception('학적 데이터 조회 실패: $e');
+    }
+  }
+
+  // 교육과정 데이터 저장
+  Future<void> saveCurriculumData(String type, Map<String, dynamic> data) async {
+    try {
+      final db = await database;
+      final jsonData = jsonEncode(data);
+      final now = DateTime.now().toIso8601String();
+
+      // 테이블이 없으면 생성
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS curriculum_data (
+          id INTEGER PRIMARY KEY,
+          type TEXT NOT NULL UNIQUE,
+          json_data TEXT NOT NULL,
+          last_updated TEXT NOT NULL
+        )
+      ''');
+
+      await db.insert('curriculum_data', {
+        'type': type,
+        'json_data': jsonData,
+        'last_updated': now,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    } catch (e) {
+      throw Exception('교육과정 데이터 저장 실패: $e');
+    }
+  }
+
+  // 교육과정 데이터 가져오기
+  Future<Map<String, dynamic>?> getCurriculumData(String type) async {
+    try {
+      final db = await database;
+
+      // 테이블이 없으면 생성
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS curriculum_data (
+          id INTEGER PRIMARY KEY,
+          type TEXT NOT NULL UNIQUE,
+          json_data TEXT NOT NULL,
+          last_updated TEXT NOT NULL
+        )
+      ''');
+
+      final List<Map<String, dynamic>> maps = await db.query(
+        'curriculum_data',
+        where: 'type = ?',
+        whereArgs: [type],
+      );
+
+      if (maps.isNotEmpty) {
+        final jsonData = maps.first['json_data'] as String;
+        return jsonDecode(jsonData) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      throw Exception('교육과정 데이터 조회 실패: $e');
+    }
+  }
+
   // 저장된 모든 파일 삭제 (이미지, JSON 등)
   Future<void> clearAllStoredFiles() async {
     try {

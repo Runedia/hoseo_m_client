@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:hoseo_m_client/menu_6_screen/curriculum_screen.dart';
-import 'package:hoseo_m_client/utils/animations/page_transitions.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
+import 'package:hoseo_m_client/utils/go_router_history.dart';
 import 'package:hoseo_m_client/vo/FeatureItem.dart';
 
 class CurriculumHomePage extends StatelessWidget {
   const CurriculumHomePage({super.key});
 
   final List<FeatureItem> features = const [
-    FeatureItem('교육과정', Icons.school, CurriculumPage(type: 'basic', title: '교육과정')),
-    FeatureItem('부전공 안내', Icons.menu_book, CurriculumPage(type: 'minor', title: '부전공 안내')),
-    FeatureItem('복수전공 안내', Icons.import_contacts, CurriculumPage(type: 'double', title: '복수전공 안내')),
+    FeatureItem('교육과정', Icons.school),
+    FeatureItem('부전공 안내', Icons.menu_book),
+    FeatureItem('복수전공 안내', Icons.import_contacts),
   ];
 
   @override
@@ -28,11 +27,24 @@ class CurriculumHomePage extends StatelessWidget {
               features.map((item) {
                 return GestureDetector(
                   onTap: () {
-                    // 네비게이션 히스토리에 추가
-                    NavigationHistory.instance.onNavigate('CurriculumPage');
+                    // 교육과정 상세 페이지로 이동
+                    String type = '';
+                    switch (item.title) {
+                      case '교육과정':
+                        type = 'basic';
+                        break;
+                      case '부전공 안내':
+                        type = 'minor';
+                        break;
+                      case '복수전공 안내':
+                        type = 'double';
+                        break;
+                    }
 
-                    // PageAnimations를 사용하여 이동
-                    Navigator.push(context, PageAnimations.fade(item.page!));
+                    GoRouterHistory.instance.pushWithHistory(
+                      context,
+                      '/academic/curriculum/$type?title=${Uri.encodeComponent(item.title)}',
+                    );
                   },
                   child: Card(
                     elevation: 3,

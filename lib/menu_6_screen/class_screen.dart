@@ -25,7 +25,10 @@ class _ClassInfoScreenState extends State<ClassInfoScreen> {
   @override
   void initState() {
     super.initState();
-    fetchClassInfo();
+    // 위젯이 완전히 빌드된 후에 fetchClassInfo 호출
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetchClassInfo();
+    });
   }
 
   Future<void> fetchClassInfo() async {

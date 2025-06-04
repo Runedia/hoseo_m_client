@@ -1,14 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:hoseo_m_client/menu_1_screen/notice_screen.dart';
-import 'package:hoseo_m_client/menu_2_screen/shuttle_select_screen.dart';
-import 'package:hoseo_m_client/menu_3_screen/department_screen.dart';
-import 'package:hoseo_m_client/menu_4_screen/meal_schedule.dart';
-import 'package:hoseo_m_client/menu_5_screen/campus_map.dart';
-import 'package:hoseo_m_client/menu_6_screen/academic_home_screen.dart';
-import 'package:hoseo_m_client/settings_screen.dart';
-import 'package:hoseo_m_client/utils/animations/page_transitions.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:hoseo_m_client/router/app_router.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
+import 'package:hoseo_m_client/utils/go_router_history.dart';
 import 'package:hoseo_m_client/utils/themes/theme_preferences.dart';
 import 'package:hoseo_m_client/utils/themes/themes.dart';
 import 'package:hoseo_m_client/vo/FeatureItem.dart';
@@ -86,20 +81,17 @@ class _MyAppState extends State<MyApp> {
         final themeName = snapshot.data!;
         final themeData = _getThemeData(themeName);
 
-        return MaterialApp(
+        return MaterialApp.router(
           title: '호서대학교 모바일',
           theme: themeData,
-          home: HomeScreen(currentThemeName: themeName),
+          routerConfig: AppRouter.createRouter(themeName),
           debugShowCheckedModeBanner: false,
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: const [
-            Locale('ko', 'KR'),
-            Locale('en', 'US'),
-          ],
+          supportedLocales: const [Locale('ko', 'KR'), Locale('en', 'US')],
           locale: const Locale('ko', 'KR'),
         );
       },
@@ -137,8 +129,7 @@ class HomeScreen extends StatelessWidget {
         IconButton(
           icon: const Icon(Icons.settings),
           onPressed: () {
-            NavigationHistory.instance.onNavigate('SettingsScreen');
-            Navigator.push(context, PageAnimations.fade(const SettingsScreen()));
+            GoRouterHistory.instance.pushWithHistory(context, '/settings');
           },
         ),
       ],
@@ -188,23 +179,17 @@ class HomeScreen extends StatelessWidget {
       child: InkWell(
         onTap: () async {
           if (item.title == "공지사항") {
-            NavigationHistory.instance.onNavigate('NoticeScreen');
-            Navigator.push(context, PageAnimations.fade(const NoticeScreen()));
+            GoRouterHistory.instance.pushWithHistory(context, '/notice');
           } else if (item.title == "셔틀버스") {
-            NavigationHistory.instance.onNavigate('ShuttleSelectScreen');
-            Navigator.push(context, PageAnimations.fade(const ShuttleSelectScreen()));
+            GoRouterHistory.instance.pushWithHistory(context, '/shuttle');
           } else if (item.title == "학과정보") {
-            NavigationHistory.instance.onNavigate('DepartmentPage');
-            Navigator.push(context, PageAnimations.fade(const DepartmentPage()));
+            GoRouterHistory.instance.pushWithHistory(context, '/department');
           } else if (item.title == "식단표") {
-            NavigationHistory.instance.onNavigate('MealPage');
-            Navigator.push(context, PageAnimations.fade(const MealPage()));
+            GoRouterHistory.instance.pushWithHistory(context, '/meal');
           } else if (item.title == "캠퍼스맵") {
-            NavigationHistory.instance.onNavigate('CampusMapPage');
-            Navigator.push(context, PageAnimations.fade(const CampusMapPage()));
+            GoRouterHistory.instance.pushWithHistory(context, '/campus');
           } else if (item.title == "학사종합") {
-            NavigationHistory.instance.onNavigate('AcademicHomePage');
-            Navigator.push(context, PageAnimations.fade(const AcademicHomePage()));
+            GoRouterHistory.instance.pushWithHistory(context, '/academic');
           } else if (item.title == "LMS") {
             var url = Uri.parse('https://learn.hoseo.ac.kr/');
             if (await canLaunchUrl(url)) {

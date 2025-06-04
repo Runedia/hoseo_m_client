@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hoseo_m_client/database/database_manager.dart';
-import 'package:hoseo_m_client/menu_4_screen/meal_detail_screen.dart';
-import 'package:hoseo_m_client/utils/animations/page_transitions.dart';
+import 'package:hoseo_m_client/utils/app_state.dart';
+import 'package:hoseo_m_client/utils/go_router_history.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
 import 'package:http/http.dart' as http;
 
@@ -227,15 +228,11 @@ class _MealListScreenState extends State<MealListScreen> {
             .map((att) => 'http://rukeras.com:3000/${att['localPath']}')
             .toList();
 
-    // 히스토리에 현재 페이지 추가
-    NavigationHistory.instance.onNavigate('MealDetail');
-
-    Navigator.push(
-      context,
-      PageAnimations.fade(
-        MealDetailScreen(notice: detail, imageUrls: imageUrls.cast<String>(), cafeteriaName: widget.cafeteriaName),
-      ),
-    );
+    // AppState에 meal detail 정보 저장
+    AppState.setCurrentMealDetail(detail, imageUrls.cast<String>(), widget.cafeteriaName);
+    
+    // go_router를 사용한 네비게이션
+    GoRouterHistory.instance.pushWithHistory(context, '/meal/detail?cafeteriaName=${widget.cafeteriaName}');
   }
 
   @override

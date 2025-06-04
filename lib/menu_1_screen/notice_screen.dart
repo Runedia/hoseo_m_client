@@ -12,12 +12,12 @@ class NoticeScreen extends StatefulWidget {
 
 class _NoticeScreenState extends State<NoticeScreen> {
   List<Map<String, dynamic>> notices = [];
-  final List<String> categories = ['전체공지', '일반공지', '학사공지', '장학공지'];
+  final List<String> categories = ['일반공지', '학사공지', '장학공지', '취업공지'];
   final Map<String, String?> typeMapping = {
-    '전체공지': null,
     '일반공지': 'CTG_17082400011',
     '학사공지': 'CTG_17082400012',
     '장학공지': 'CTG_17082400013',
+    '취업공지': 'CTG_20120400086',
   };
   String selectedCategory = '전체공지';
   String searchQuery = '';

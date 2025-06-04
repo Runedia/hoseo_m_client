@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hoseo_m_client/menu_5_screen/campus_map_detail_screen.dart';
-import 'package:hoseo_m_client/utils/animations/page_transitions.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
+import 'package:hoseo_m_client/utils/go_router_history.dart';
 
 class CampusMapPage extends StatelessWidget {
   const CampusMapPage({super.key});
@@ -34,11 +34,7 @@ class CampusMapPage extends StatelessWidget {
         elevation: 3,
       ),
       onPressed: () {
-        // 네비게이션 히스토리에 추가
-        NavigationHistory.instance.onNavigate('CampusMapDetailScreen');
-
-        // PageAnimations를 사용하여 이동
-        Navigator.push(context, PageAnimations.fade(CampusMapDetailScreen(campusName: label, campusCode: code)));
+        GoRouterHistory.instance.pushWithHistory(context, '/campus/detail?campusName=$label&campusCode=$code');
       },
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

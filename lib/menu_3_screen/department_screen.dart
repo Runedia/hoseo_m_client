@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:hoseo_m_client/menu_3_screen/department_detail_screen.dart';
-import 'package:hoseo_m_client/utils/animations/page_transitions.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hoseo_m_client/utils/app_state.dart';
+import 'package:hoseo_m_client/utils/go_router_history.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -249,9 +249,8 @@ class _DepartmentPageState extends State<DepartmentPage> {
                                       if (departmentInfo != null) {
                                         // AppState에 현재 학과 정보 저장
                                         AppState.setCurrentDepartment(dept, departmentInfo);
-                                        // 히스토리에는 고정된 라우트명으로 추가
-                                        NavigationHistory.instance.onNavigate('DepartmentDetail');
-                                        Navigator.push(context, PageAnimations.fade(const DepartmentDetailScreen()));
+                                        // go_router로 이동
+                                        GoRouterHistory.instance.pushWithHistory(context, '/department/detail');
                                       }
                                     },
                                     child: Text(dept, style: const TextStyle(color: Colors.black)),
