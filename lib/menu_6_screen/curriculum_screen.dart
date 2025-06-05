@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:hoseo_m_client/config/api_config.dart';
 import 'package:hoseo_m_client/database/database_manager.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
 import 'package:hoseo_m_client/utils/themes/themes.dart';
@@ -63,7 +64,7 @@ class _CurriculumPageState extends State<CurriculumPage> {
         // 2. 인터넷이 연결되어있을 경우
         try {
           // 3. REST API 연결
-          final response = await http.get(Uri.parse('http://rukeras.com:3000/eduguide/curriculum?type=${widget.type}'));
+          final response = await http.get(Uri.parse(ApiConfig.getUrl('/eduguide/curriculum?type=${widget.type}')));
 
           if (response.statusCode == 200) {
             // 4. 데이터를 수신 받은 경우 해당 데이터 사용

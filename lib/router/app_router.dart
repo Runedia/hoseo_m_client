@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoseo_m_client/main.dart';
-import 'package:hoseo_m_client/menu_1_screen/notice_screen_new.dart';
-import 'package:hoseo_m_client/menu_1_screen/notice_webview_enhanced.dart';
+import 'package:hoseo_m_client/menu_1_screen/notice_screen.dart';
+import 'package:hoseo_m_client/menu_1_screen/notice_webview_screen.dart';
 import 'package:hoseo_m_client/menu_2_screen/shuttle_select_screen.dart';
 import 'package:hoseo_m_client/menu_2_screen/shuttle_detail_screen.dart';
 import 'package:hoseo_m_client/menu_3_screen/department_screen.dart';

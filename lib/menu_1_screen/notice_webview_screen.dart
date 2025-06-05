@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:hoseo_m_client/config/api_config.dart';
 import 'package:hoseo_m_client/models/notice_models.dart';
 import 'package:hoseo_m_client/services/notice_download_service.dart';
 import 'package:hoseo_m_client/services/notice_local_server.dart';
@@ -123,7 +124,7 @@ class _NoticeWebViewEnhancedState extends State<NoticeWebViewEnhanced> {
   /// 공지사항 상세 정보 가져오기
   Future<void> _fetchNoticeDetails() async {
     try {
-      final response = await Dio().get('${NoticeDownloadService.baseUrl}/notice/idx/${widget.chidx}');
+      final response = await Dio().get(ApiConfig.getUrl('/notice/idx/${widget.chidx}'));
       if (response.statusCode == 200) {
         final data = response.data;
         final List<dynamic> attachmentsList = data['attachments'] ?? [];

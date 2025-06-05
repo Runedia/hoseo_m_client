@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoseo_m_client/config/api_config.dart';
 import 'package:hoseo_m_client/utils/app_state.dart';
 import 'package:hoseo_m_client/utils/go_router_history.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
@@ -54,7 +55,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
   }
 
   Future<void> fetchDepartments() async {
-    const apiUrl = 'http://rukeras.com:3000/departments/list?format=detailed';
+    final apiUrl = ApiConfig.getUrl('/departments/list?format=detailed');
     final file = await _localFile('departments.json');
     final online = await isOnline();
 
@@ -106,7 +107,7 @@ class _DepartmentPageState extends State<DepartmentPage> {
 
   Future<Map<String, dynamic>?> fetchDepartmentDetail(String deptName) async {
     final encodedDeptName = Uri.encodeComponent(deptName);
-    final url = Uri.parse('http://rukeras.com:3000/departments/info?dept=$encodedDeptName');
+    final url = Uri.parse(ApiConfig.getUrl('/departments/info?dept=$encodedDeptName'));
     final file = await _localFile('department-$encodedDeptName.json');
     final online = await isOnline();
 
@@ -119,14 +120,14 @@ class _DepartmentPageState extends State<DepartmentPage> {
 
           final List<File> localImages = [];
           for (final img in (data['images'] ?? [])) {
-            final url = 'http://rukeras.com:3000/departments/$img';
+            final url = ApiConfig.getFileUrl('departments/$img');
             final file = await downloadImage(url);
             localImages.add(file);
           }
 
           File? singleLocalImage;
           if (data['image'] != null && data['image'].toString().trim().isNotEmpty) {
-            final url = 'http://rukeras.com:3000/departments/${data['image']}';
+            final url = ApiConfig.getFileUrl('departments/${data['image']}');
             singleLocalImage = await downloadImage(url);
           }
 
@@ -139,14 +140,14 @@ class _DepartmentPageState extends State<DepartmentPage> {
 
           final List<File> localImages = [];
           for (final img in (data['images'] ?? [])) {
-            final url = 'http://rukeras.com:3000/departments/$img';
+            final url = ApiConfig.getFileUrl('departments/$img');
             final file = await downloadImage(url);
             localImages.add(file);
           }
 
           File? singleLocalImage;
           if (data['image'] != null && data['image'].toString().trim().isNotEmpty) {
-            final url = 'http://rukeras.com:3000/departments/${data['image']}';
+            final url = ApiConfig.getFileUrl('departments/${data['image']}');
             singleLocalImage = await downloadImage(url);
           }
 

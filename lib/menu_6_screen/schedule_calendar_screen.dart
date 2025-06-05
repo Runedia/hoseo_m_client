@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:hoseo_m_client/config/api_config.dart';
 import 'package:hoseo_m_client/database/database_manager.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
 import 'package:http/http.dart' as http;
@@ -121,7 +122,7 @@ class _CalendarSchedulePageState extends State<CalendarSchedulePage> {
     print('[DEBUG] _fetchFromAPI 시작');
     try {
       print('[DEBUG] API 요청 시작: http://rukeras.com:3000/eduguide/calendar');
-      final response = await http.get(Uri.parse('http://rukeras.com:3000/eduguide/calendar'));
+      final response = await http.get(Uri.parse(ApiConfig.getUrl('/eduguide/calendar')));
       print('[DEBUG] API 응답 받음 - 상태코드: ${response.statusCode}');
 
       if (response.statusCode == 200) {

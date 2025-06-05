@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:hoseo_m_client/config/api_config.dart';
 import 'package:hoseo_m_client/models/notice_models.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -7,7 +8,6 @@ import 'package:hoseo_m_client/utils/notice_file_utils.dart';
 import 'package:open_file/open_file.dart';
 
 class NoticeAttachmentService {
-  static const String baseUrl = 'http://rukeras.com:3000';
 
   /// 첨부파일 개별 다운로드
   static Future<String?> downloadAttachment({

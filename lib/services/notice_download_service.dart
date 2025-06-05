@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:hoseo_m_client/config/api_config.dart';
 import 'package:hoseo_m_client/models/notice_models.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -8,7 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 class NoticeDownloadService {
-  static const String baseUrl = 'http://rukeras.com:3000';
   static const String savedNoticesKey = 'saved_notices';
 
   /// 네트워크 연결 상태 확인
@@ -30,7 +30,7 @@ class NoticeDownloadService {
       print('공지사항 패키지 다운로드 시작: $chidx');
 
       // 1. 공지사항 상세 정보 가져오기
-      final response = await Dio().get('$baseUrl/notice/idx/$chidx');
+      final response = await Dio().get(ApiConfig.getUrl('/notice/idx/$chidx'));
       if (response.statusCode != 200) {
         throw Exception('공지사항 정보 가져오기 실패: ${response.statusCode}');
       }
@@ -43,7 +43,7 @@ class NoticeDownloadService {
       }
 
       // 2. HTML 콘텐츠 다운로드
-      final String htmlUrl = '$baseUrl/$contentPath';
+      final String htmlUrl = ApiConfig.getFileUrl(contentPath);
       print('HTML 다운로드: $htmlUrl');
 
       final htmlResponse = await Dio().get(htmlUrl);

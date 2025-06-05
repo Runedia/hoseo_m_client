@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
+        <!-- 기존 서버 도메인 -->
         <domain includeSubdomains="true">rukeras.com</domain>
         <domain includeSubdomains="true">rukeras.com:3000</domain>
+
+        <!-- 로컬 개발용 주소들 -->
+        <!-- 일반적인 localhost -->
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">localhost:3000</domain>
+        <!-- 로컬 IP 주소 -->
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">127.0.0.1:3000</domain>
+        <!-- Android 에뮬레이터에서 호스트 PC를 가리키는 특수 IP -->
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">10.0.2.2:3000</domain>
     </domain-config>
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>

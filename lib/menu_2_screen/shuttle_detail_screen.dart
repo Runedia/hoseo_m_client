@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:hoseo_m_client/config/api_config.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
 import 'package:http/http.dart' as http;
 
@@ -31,7 +32,7 @@ class _ShuttleDetailScreenState extends State<ShuttleDetailScreen> {
     final dateStr =
         '${widget.date.year}-${widget.date.month.toString().padLeft(2, '0')}-${widget.date.day.toString().padLeft(2, '0')}';
     final route = widget.isAsanToCheonan ? '1' : '2';
-    final simpleUri = Uri.parse('http://rukeras.com:3000/shuttle/schedule?date=$dateStr&route=$route');
+    final simpleUri = Uri.parse(ApiConfig.getUrl('/shuttle/schedule?date=$dateStr&route=$route'));
 
     try {
       final response = await http.get(simpleUri);

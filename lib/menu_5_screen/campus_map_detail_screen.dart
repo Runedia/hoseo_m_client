@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:hoseo_m_client/config/api_config.dart';
 import 'package:hoseo_m_client/database/database_manager.dart';
 import 'package:hoseo_m_client/menu_5_screen/campus_map_detail.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
@@ -24,7 +25,6 @@ class _CampusMapDetailScreenState extends State<CampusMapDetailScreen> {
   List<String> buildingList = [];
   bool isLoading = true;
   String? error;
-  final baseUrl = 'http://rukeras.com:3000';
   bool _hasInitialized = false;
 
   @override
@@ -109,8 +109,8 @@ class _CampusMapDetailScreenState extends State<CampusMapDetailScreen> {
         // 1. 인터넷이 연결되어있을 경우
         try {
           // 2. REST API 연결
-          final jsonUrl = Uri.parse('$baseUrl/campus_map/${widget.campusCode}');
-          final imageUrl = Uri.parse('$baseUrl/campus_map/${widget.campusCode}/image');
+          final jsonUrl = Uri.parse(ApiConfig.getUrl('/campus_map/${widget.campusCode}'));
+          final imageUrl = Uri.parse(ApiConfig.getUrl('/campus_map/${widget.campusCode}/image'));
 
           final res = await http.get(jsonUrl);
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hoseo_m_client/menu_1_screen/notice_webview_enhanced.dart';
+import 'package:hoseo_m_client/menu_1_screen/notice_webview_screen.dart';
 import 'package:hoseo_m_client/models/notice_models.dart';
 import 'package:hoseo_m_client/services/notice_download_service.dart';
 import 'package:hoseo_m_client/services/notice_local_server.dart';

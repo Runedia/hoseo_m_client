@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoseo_m_client/config/api_config.dart';
 import 'package:hoseo_m_client/database/database_manager.dart';
 import 'package:hoseo_m_client/utils/app_state.dart';
 import 'package:hoseo_m_client/utils/go_router_history.dart';
@@ -58,7 +59,7 @@ class _MealListScreenState extends State<MealListScreen> {
 
   Future<void> _fetchFromAPI(int page) async {
     try {
-      final url = Uri.parse('http://rukeras.com:3000/menu/list2?page=$page&pageSize=$pageSize&action=${widget.action}');
+      final url = Uri.parse(ApiConfig.getUrl('/menu/list2?page=$page&pageSize=$pageSize&action=${widget.action}'));
       final res = await http.get(url);
 
       if (res.statusCode == 200) {
@@ -137,7 +138,7 @@ class _MealListScreenState extends State<MealListScreen> {
         // 1. 인터넷이 연결되어있을 경우
         try {
           // 2. REST API 연결
-          final url = Uri.parse('http://rukeras.com:3000/menu/idx/$chidx/${widget.action}');
+          final url = Uri.parse(ApiConfig.getUrl('/menu/idx/$chidx/${widget.action}'));
           final res = await http.get(url);
 
           if (res.statusCode == 200) {
@@ -225,7 +226,7 @@ class _MealListScreenState extends State<MealListScreen> {
               final fileName = (att['fileName'] ?? att['file_name'] ?? '').toString().toLowerCase();
               return fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg');
             })
-            .map((att) => 'http://rukeras.com:3000/${att['localPath']}')
+            .map((att) => ApiConfig.getFileUrl(att['localPath']))
             .toList();
 
     // AppState에 meal detail 정보 저장
