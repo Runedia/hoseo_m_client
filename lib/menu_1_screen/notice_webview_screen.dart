@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:hoseo_m_client/config/api_config.dart';
 import 'package:hoseo_m_client/models/notice_models.dart';
@@ -8,12 +6,12 @@ import 'package:hoseo_m_client/services/notice_local_server.dart';
 import 'package:hoseo_m_client/services/notice_network_service.dart';
 import 'package:hoseo_m_client/services/notice_attachment_service.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
+import 'package:hoseo_m_client/utils/go_router_history.dart';
 import 'package:hoseo_m_client/menu_1_screen/widgets/notice_attachment_section.dart';
 import 'package:hoseo_m_client/menu_1_screen/widgets/notice_download_indicators.dart';
 import 'package:hoseo_m_client/menu_1_screen/widgets/notice_webview_controls.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:dio/dio.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 
 class NoticeWebViewEnhanced extends StatefulWidget {
@@ -22,6 +20,7 @@ class NoticeWebViewEnhanced extends StatefulWidget {
   final String? chidx;
   final String? author;
   final String? createDt;
+  final bool? offline; // 오프라인 플래그 추가
 
   const NoticeWebViewEnhanced({
     super.key,
@@ -30,6 +29,7 @@ class NoticeWebViewEnhanced extends StatefulWidget {
     this.chidx,
     this.author,
     this.createDt,
+    this.offline = false,
   });
 
   @override
@@ -66,8 +66,13 @@ class _NoticeWebViewEnhancedState extends State<NoticeWebViewEnhanced> {
     _initializeServices();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeWebView();
-      _startAutoDownload();
+      // 오프라인이거나 URL이 비어있으면 WebView 초기화 생략
+      if (widget.offline == true || widget.url.isEmpty) {
+        _handleOfflineMode();
+      } else {
+        _initializeWebView();
+        _startAutoDownload();
+      }
     });
   }
 
@@ -94,6 +99,15 @@ class _NoticeWebViewEnhancedState extends State<NoticeWebViewEnhanced> {
 
     // 초기 네트워크 상태 설정
     isConnected = _networkService.isConnected;
+  }
+
+  /// 오프라인 모드 처리
+  void _handleOfflineMode() {
+    setState(() {
+      isLoading = false;
+      hasError = true;
+      errorMessage = '오프라인 상태입니다.\n상세 내용을 보려면 인터넷에 연결해주세요.';
+    });
   }
 
   /// 자동 다운로드 시작
@@ -124,7 +138,11 @@ class _NoticeWebViewEnhancedState extends State<NoticeWebViewEnhanced> {
   /// 공지사항 상세 정보 가져오기
   Future<void> _fetchNoticeDetails() async {
     try {
-      final response = await Dio().get(ApiConfig.getUrl('/notice/idx/${widget.chidx}'));
+      final dio = Dio();
+      dio.options.connectTimeout = const Duration(seconds: 5);
+      dio.options.receiveTimeout = const Duration(seconds: 5);
+
+      final response = await dio.get(ApiConfig.getUrl('/notice/idx/${widget.chidx}'));
       if (response.statusCode == 200) {
         final data = response.data;
         final List<dynamic> attachmentsList = data['attachments'] ?? [];
@@ -349,6 +367,11 @@ class _NoticeWebViewEnhancedState extends State<NoticeWebViewEnhanced> {
 
   /// 메인 콘텐츠 위젯
   Widget _buildMainContent() {
+    // 오프라인 모드일 때 특별한 처리
+    if (widget.offline == true || widget.url.isEmpty) {
+      return _buildOfflineContent();
+    }
+
     if (hasError) {
       return NoticeWebViewControls.buildErrorPage(
         errorMessage: errorMessage ?? '알 수 없는 오류',
@@ -365,5 +388,88 @@ class _NoticeWebViewEnhancedState extends State<NoticeWebViewEnhanced> {
     }
 
     return WebViewWidget(controller: controller!);
+  }
+
+  /// 오프라인 콘텐츠 위젯
+  Widget _buildOfflineContent() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          // 공지사항 기본 정보 카드
+          Card(
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 제목
+                  Text(widget.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  // 작성자 및 날짜
+                  if (widget.author != null || widget.createDt != null)
+                    Row(
+                      children: [
+                        const Icon(Icons.person, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${widget.author ?? ''} / ${widget.createDt?.substring(0, 10) ?? ''}',
+                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 16),
+                  // 오프라인 안내 메시지
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.cloud_off, color: Colors.orange[700], size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '오프라인 상태입니다.\n상세 내용을 보려면 인터넷에 연결해주세요.',
+                            style: TextStyle(color: Colors.orange[700], fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // 재시도 버튼
+          ElevatedButton.icon(
+            onPressed: () async {
+              // 네트워크 재연결 확인 (5초 타임아웃)
+              try {
+                final networkService = NoticeNetworkService.instance;
+                final connected = await networkService.checkConnection().timeout(const Duration(seconds: 5));
+
+                if (connected && widget.chidx != null) {
+                  // 네트워크가 연결되면 GoRouter를 사용하여 이전 페이지로 이동
+                  GoRouterHistory.instance.navigateBack(context);
+                } else {
+                  _showSnackBar('네트워크 연결을 확인해주세요.');
+                }
+              } catch (e) {
+                print('[DEBUG] 네트워크 확인 타임아웃: $e');
+                _showSnackBar('네트워크 확인 시간이 초과되었습니다.');
+              }
+            },
+            icon: const Icon(Icons.refresh),
+            label: const Text('다시 시도'),
+          ),
+        ],
+      ),
+    );
   }
 }

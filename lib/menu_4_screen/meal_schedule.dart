@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
 import 'package:hoseo_m_client/utils/go_router_history.dart';
 
@@ -32,7 +31,10 @@ class _MealPageState extends State<MealPage> {
                 text: cafeteria,
                 onPressed: () {
                   final action = cafeteriaActions[cafeteria]!;
-                  GoRouterHistory.instance.pushWithHistory(context, '/meal/list?cafeteriaName=$cafeteria&action=$action');
+                  GoRouterHistory.instance.pushWithHistory(
+                    context,
+                    '/meal/list?cafeteriaName=$cafeteria&action=$action',
+                  );
                 },
               ),
             )

@@ -32,12 +32,10 @@ class CommonScaffold extends StatelessWidget {
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
-        leading: showBackButton
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => _navigateBack(context),
-              )
-            : null,
+        leading:
+            showBackButton
+                ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => _navigateBack(context))
+                : null,
         actions: actions,
       ),
       body: body,
@@ -52,8 +50,12 @@ class CommonBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.3), width: 1)),
+      ),
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -69,12 +71,7 @@ class CommonBottomNavigation extends StatelessWidget {
             label: '홈',
             onTap: () => GoRouterHistory.instance.navigateHome(context),
           ),
-          _buildNavButton(
-            context,
-            icon: Icons.arrow_forward,
-            label: '다음',
-            onTap: () => _navigateForward(context),
-          ),
+          _buildNavButton(context, icon: Icons.arrow_forward, label: '다음', onTap: () => _navigateForward(context)),
         ],
       ),
     );
@@ -85,12 +82,9 @@ class CommonBottomNavigation extends StatelessWidget {
     if (GoRouterHistory.instance.canGoForward()) {
       GoRouterHistory.instance.navigateForward(context);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('다음 페이지가 없습니다.'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('다음 페이지가 없습니다.'), duration: Duration(seconds: 2)));
     }
   }
 

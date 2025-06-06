@@ -22,10 +22,18 @@ class CampusMapDetail extends StatelessWidget {
           onPressed: () {},
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).primaryColor,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 20),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 3,
           ),
-          child: Text(campusName, style: const TextStyle(color: Colors.white)),
+
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(width: 12),
+              Text(campusName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         Container(

@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 /// go_router와 호환되는 네비게이션 히스토리 관리 클래스
 class GoRouterHistory {
   static final GoRouterHistory _instance = GoRouterHistory._internal();
+
   static GoRouterHistory get instance => _instance;
+
   GoRouterHistory._internal();
 
   final List<String> _history = ['/'];
@@ -102,60 +104,51 @@ class GoRouterHistory {
   void pushWithHistory(BuildContext context, String route) {
     print('[pushWithHistory] Attempting to navigate to: $route');
     onNavigate(route);
-    context.push(route);
+    context.go(route);
   }
 
   /// 뒤로가기 실행
   void navigateBack(BuildContext context) {
     print('[navigateBack] Before: ${getHistoryStatus()}');
     if (canGoBack()) {
-      final currentRoute = getCurrentRoute();
       onBack();
       final targetRoute = getCurrentRoute();
       print('[navigateBack] After onBack: ${getHistoryStatus()}');
-      
-      // 현재 라우트와 이동할 라우트가 같으면 이동하지 않음
-      if (currentRoute == targetRoute) {
-        print('[navigateBack] Already at target route: $targetRoute');
-        return;
-      }
-      
-      if (Navigator.canPop(context)) {
-        print('[navigateBack] Using Navigator.pop()');
-        Navigator.pop(context);
-      } else {
-        // 스택이 비어있다면 이전 라우트로 이동
-        print('[navigateBack] Stack empty, going to: $targetRoute');
-        if (targetRoute != null && targetRoute != currentRoute) {
-          context.go(targetRoute);
-        }
+
+      if (targetRoute != null) {
+        print('[navigateBack] Going to: $targetRoute');
+        context.go(targetRoute);
       }
     } else {
       print('[navigateBack] Cannot go back');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이전 페이지가 없습니다.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이전 페이지가 없습니다.')));
     }
   }
 
   /// 앞으로가기 실행
   void navigateForward(BuildContext context) {
+    print('[navigateForward] Before: ${getHistoryStatus()}');
     if (canGoForward()) {
-      final nextRoute = getNextRoute();
-      if (nextRoute != null) {
-        onForward();
-        context.push(nextRoute);
+      onForward();
+      final targetRoute = getCurrentRoute();
+      print('[navigateForward] After onForward: ${getHistoryStatus()}');
+
+      if (targetRoute != null) {
+        print('[navigateForward] Going to: $targetRoute');
+        context.go(targetRoute);
       }
+    } else {
+      print('[navigateForward] Cannot go forward');
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('다음 페이지가 없습니다.')));
     }
   }
 
   /// 홈으로 이동 실행
   void navigateHome(BuildContext context) {
+    print('[navigateHome] Navigating to home');
     // 홈으로 이동하는 것도 새로운 네비게이션으로 기록
     onNavigate('/');
-    // 모든 스택을 지우고 홈으로 이동
-    while (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
+    // go_router를 사용하여 홈으로 이동 (스택을 모두 대체)
+    context.go('/');
   }
 }

@@ -25,7 +25,7 @@ class _MealListScreenState extends State<MealListScreen> {
   int currentPage = 1;
   int totalPages = 1;
   int totalCount = 0;
-  final int pageSize = 10;
+  final int pageSize = 8;
 
   @override
   void initState() {
@@ -149,7 +149,7 @@ class _MealListScreenState extends State<MealListScreen> {
             await DatabaseManager.instance.saveMenuDetailData(widget.action, chidx, detail);
 
             // 로딩 대화상자 닫기
-            if (mounted) Navigator.of(context).pop();
+            if (mounted) context.pop();
             return _navigateToDetail(detail);
           } else {
             // 서버 오류
@@ -164,7 +164,7 @@ class _MealListScreenState extends State<MealListScreen> {
 
           if (localDetail != null) {
             // 로딩 대화상자 닫기
-            if (mounted) Navigator.of(context).pop();
+            if (mounted) context.pop();
 
             // 오프라인 데이터 사용 안내
             if (mounted) {
@@ -190,7 +190,7 @@ class _MealListScreenState extends State<MealListScreen> {
 
         if (localDetail != null) {
           // 로딩 대화상자 닫기
-          if (mounted) Navigator.of(context).pop();
+          if (mounted) context.pop();
           return _navigateToDetail(localDetail);
         } else {
           // 9. DB에도 데이터가 없을 경우 SnackBar로 메시지 표시
@@ -199,7 +199,7 @@ class _MealListScreenState extends State<MealListScreen> {
       }
     } catch (e) {
       // 로딩 대화상자 닫기
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) context.pop();
 
       // 오류 메시지 표시
       if (mounted) {
@@ -231,7 +231,7 @@ class _MealListScreenState extends State<MealListScreen> {
 
     // AppState에 meal detail 정보 저장
     AppState.setCurrentMealDetail(detail, imageUrls.cast<String>(), widget.cafeteriaName);
-    
+
     // go_router를 사용한 네비게이션
     GoRouterHistory.instance.pushWithHistory(context, '/meal/detail?cafeteriaName=${widget.cafeteriaName}');
   }
@@ -251,81 +251,32 @@ class _MealListScreenState extends State<MealListScreen> {
                     _titleButton(widget.cafeteriaName),
                     const SizedBox(height: 16),
                     Expanded(
-                      child: SingleChildScrollView(
-                        child: Table(
-                          border: TableBorder.all(),
-                          columnWidths: const {
-                            0: FixedColumnWidth(40),
-                            1: FlexColumnWidth(),
-                            2: FixedColumnWidth(70),
-                            3: FixedColumnWidth(90),
-                          },
-                          children: [
-                            _headerRow(),
-                            ...noticeList.asMap().entries.map((entry) {
-                              final notice = entry.value;
-                              return TableRow(
-                                children: [
-                                  _cell('${notice['idx']}'),
-                                  InkWell(
-                                    onTap: () => fetchDetail(notice['chidx']),
-                                    child: _cell(notice['title'], centerAlign: false),
-                                  ),
-                                  _cell(notice['author']),
-                                  _cell(notice['create_dt'].substring(0, 10)),
-                                ],
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // 페이징 정보 및 버튼
-                    if (totalCount > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                        margin: const EdgeInsets.only(bottom: 10), // 하단 네비게이션과 겹치지 않도록 여백 추가
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          border: Border(top: BorderSide(color: Colors.grey[300]!)),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              '전체 $totalCount건 (${currentPage}/$totalPages 페이지)',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                            const SizedBox(height: 8),
-                            if (totalPages > 1)
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: currentPage > 1 ? () => fetchMenus(page: currentPage - 1) : null,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Theme.of(context).primaryColor,
-                                      foregroundColor: Colors.white,
-                                      minimumSize: const Size(80, 36),
-                                    ),
-                                    child: const Text('이전'),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  ElevatedButton(
-                                    onPressed:
-                                        currentPage < totalPages ? () => fetchMenus(page: currentPage + 1) : null,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Theme.of(context).primaryColor,
-                                      foregroundColor: Colors.white,
-                                      minimumSize: const Size(80, 36),
-                                    ),
-                                    child: const Text('다음'),
-                                  ),
-                                ],
+                      child:
+                          noticeList.isEmpty
+                              ? const Center(
+                                child: Text('데이터가 없습니다.', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                              )
+                              : SingleChildScrollView(
+                                child: Table(
+                                  border: TableBorder.all(color: Colors.grey[300]!, width: 1),
+                                  columnWidths: const {
+                                    0: FixedColumnWidth(50), // 번호 열 약간 넓게
+                                    1: FlexColumnWidth(3), // 제목 열 더 넓게
+                                    2: FixedColumnWidth(60), // 작성자 열 약간 좁게
+                                    3: FixedColumnWidth(85), // 등록일자 열 유지
+                                  },
+                                  children: [
+                                    _headerRow(),
+                                    ...noticeList.asMap().entries.map((entry) {
+                                      final notice = entry.value;
+                                      return _buildTableRow(notice, entry.key);
+                                    }),
+                                  ],
+                                ),
                               ),
-                          ],
-                        ),
-                      ),
+                    ),
+                    // 미니멀 도트 스타일 페이징
+                    if (totalCount > 0) _buildMinimalDotPagination(),
                   ],
                 ),
       ),
@@ -334,25 +285,80 @@ class _MealListScreenState extends State<MealListScreen> {
 
   TableRow _headerRow() => TableRow(
     decoration: BoxDecoration(color: Theme.of(context).primaryColor),
-    children:
-        ['번호', '제목', '작성자', '등록일자']
-            .map(
-              (text) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  text,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: Colors.white),
-                ),
-              ),
-            )
-            .toList(),
+    children: [_headerCell('번호'), _headerCell('제목'), _headerCell('작성자'), _headerCell('등록일자')],
   );
 
-  Widget _cell(String text, {bool centerAlign = true}) => Padding(
-    padding: const EdgeInsets.all(8),
-    child: Text(text, style: const TextStyle(fontSize: 14), textAlign: centerAlign ? TextAlign.center : TextAlign.left),
+  Widget _headerCell(String text) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+    child: Center(
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+      ),
+    ),
   );
+
+  Widget _cell(String text, {bool centerAlign = true, bool isClickable = false}) => Container(
+    constraints: const BoxConstraints(minHeight: 48), // TableRow와 동일한 최소 높이
+    color: Colors.transparent, // 투명하게 설정하여 TableRow 배경색 상속
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Center(
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 13,
+            color: isClickable ? Theme.of(context).primaryColor : Colors.black87,
+            fontWeight: isClickable ? FontWeight.w500 : FontWeight.normal,
+          ),
+          textAlign: centerAlign ? TextAlign.center : TextAlign.left,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ),
+  );
+
+  TableRow _buildTableRow(Map<String, dynamic> notice, int index) {
+    final title = notice['title'] ?? '';
+    final author = notice['author'] ?? '';
+    final createDate = notice['create_dt']?.substring(0, 10) ?? '';
+    final idx = notice['idx']?.toString() ?? '';
+
+    return TableRow(
+      decoration: BoxDecoration(color: index.isEven ? Colors.grey[300] : Colors.white),
+      children: [
+        _cell(idx),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => fetchDetail(notice['chidx']),
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(minHeight: 48),
+              color: Colors.transparent, // TableRow 배경색 상속
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    title,
+                    style: TextStyle(fontSize: 13, color: Theme.of(context).primaryColor, fontWeight: FontWeight.w500),
+                    textAlign: TextAlign.left,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        _cell(author),
+        _cell(createDate),
+      ],
+    );
+  }
 
   Widget _titleButton(String title) => ElevatedButton(
     style: ElevatedButton.styleFrom(
@@ -363,4 +369,91 @@ class _MealListScreenState extends State<MealListScreen> {
     onPressed: () {},
     child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14)),
   );
+
+  // 미니멀 도트 스타일 페이징 위젯
+  Widget _buildMinimalDotPagination() {
+    print('[DEBUG] Building pagination: currentPage=$currentPage, totalPages=$totalPages, totalCount=$totalCount');
+
+    return Container(
+      child:
+          totalPages > 1
+              ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 이전 버튼
+                  _buildCircleButton(
+                    icon: Icons.keyboard_arrow_left,
+                    onPressed: currentPage > 1 ? () => fetchMenus(page: currentPage - 1) : null,
+                    isEnabled: currentPage > 1,
+                  ),
+                  const SizedBox(width: 12),
+                  // 페이지 정보 표시
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$currentPage / $totalPages',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // 다음 버튼
+                  _buildCircleButton(
+                    icon: Icons.keyboard_arrow_right,
+                    onPressed: currentPage < totalPages ? () => fetchMenus(page: currentPage + 1) : null,
+                    isEnabled: currentPage < totalPages,
+                  ),
+                ],
+              )
+              : Text(
+                '전체 $totalCount건',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
+                textAlign: TextAlign.center,
+              ),
+    );
+  }
+
+  // 원형 네비게이션 버튼
+  Widget _buildCircleButton({required IconData icon, required VoidCallback? onPressed, required bool isEnabled}) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isEnabled ? Theme.of(context).primaryColor : Colors.grey[300],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(16),
+          child: Icon(icon, size: 18, color: isEnabled ? Colors.white : Colors.grey[500]),
+        ),
+      ),
+    );
+  }
+
+  // 개별 도트 위젯
+  Widget _buildDot(int pageNumber) {
+    final bool isCurrentPage = pageNumber == currentPage;
+
+    return GestureDetector(
+      onTap: () => fetchMenus(page: pageNumber),
+      child: Container(
+        width: isCurrentPage ? 20 : 6,
+        height: 6,
+        decoration: BoxDecoration(
+          color: isCurrentPage ? Theme.of(context).primaryColor : Colors.grey[400],
+          borderRadius: BorderRadius.circular(3),
+        ),
+      ),
+    );
+  }
 }

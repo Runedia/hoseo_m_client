@@ -1,6 +1,9 @@
+import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hoseo_m_client/config/api_config.dart';
+import 'package:hoseo_m_client/database/database_manager.dart';
 import 'package:hoseo_m_client/utils/common_scaffold.dart';
 import 'package:hoseo_m_client/utils/go_router_history.dart';
 
@@ -22,75 +25,424 @@ class _NoticeScreenNewState extends State<NoticeScreenNew> {
   };
   String selectedCategory = '일반공지';
   String searchQuery = '';
+  String searchType = 'title'; // 'title' 또는 'author'
   bool isLoading = true;
+
+  // 페이징 관련 변수
+  int currentPage = 1;
+  final int pageSize = 20;
+  bool isLoadingMore = false;
+  bool hasMoreData = true;
+
+  // 디바운싱 관련
+  Timer? _debounceTimer;
+  final TextEditingController _searchController = TextEditingController();
+
+  // 스크롤 컨트롤러
+  final ScrollController _scrollController = ScrollController();
+
+  // 네트워크 상태
+  bool isOnline = true;
+  String? errorMessage;
 
   @override
   void initState() {
     super.initState();
-    // 초기 로드 시 선택된 카테고리로 공지사항 가져오기
-    fetchNotices(categoryType: typeMapping[selectedCategory]);
+    // 스크롤 리스너 추가
+    _scrollController.addListener(_onScroll);
+    // 네트워크 상태 확인 후 초기 로드
+    _checkConnectivityAndLoadData();
   }
 
-  Future<void> fetchNotices({String? categoryType}) async {
-    // if (!mounted) return; // 위젯이 dispose된 경우 조기 반환
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
-    setState(() => isLoading = true);
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      // 스크롤이 끝에서 200px 전에 도달하면 다음 페이지 로드
+      if (!isLoadingMore && hasMoreData && isOnline) {
+        _loadMoreNotices();
+      }
+    }
+  }
+
+  // 네트워크 연결 상태 확인 (타임아웃 5초)
+  Future<bool> _checkConnectivity() async {
     try {
-      // 서버에서 카테고리별 필터링 지원
-      String url = ApiConfig.getUrl('/notice/list?page=1&pageSize=30');
-      if (categoryType != null && categoryType.isNotEmpty) {
-        url += '&type=$categoryType';
+      final List<ConnectivityResult> connectivityResult = await Connectivity().checkConnectivity().timeout(
+        const Duration(seconds: 5),
+      );
+      return !connectivityResult.contains(ConnectivityResult.none);
+    } catch (e) {
+      print('[DEBUG] 네트워크 확인 오류 또는 타임아웃: $e');
+      return false; // 타임아웃이나 오류 시 오프라인으로 간주
+    }
+  }
+
+  // 네트워크 상태 확인 후 데이터 로드
+  Future<void> _checkConnectivityAndLoadData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    isOnline = await _checkConnectivity();
+    print('[DEBUG] 네트워크 상태: ${isOnline ? "온라인" : "오프라인"}');
+
+    if (isOnline) {
+      await _loadInitialNotices();
+    } else {
+      await _loadOfflineData();
+    }
+  }
+
+  // 오프라인 데이터 로드
+  Future<void> _loadOfflineData() async {
+    try {
+      final dbManager = DatabaseManager.instance;
+      final categoryType = typeMapping[selectedCategory];
+
+      // 기본 캐시 키 생성 (카테고리별)
+      String cacheKey = 'notice_${categoryType ?? 'all'}';
+
+      final cachedData = await dbManager.getMenuListData(cacheKey, 1);
+
+      if (cachedData != null && cachedData['notices'] != null) {
+        final List<Map<String, dynamic>> cachedNotices = List<Map<String, dynamic>>.from(cachedData['notices']);
+
+        setState(() {
+          notices = cachedNotices;
+          isLoading = false;
+          hasMoreData = false; // 오프라인에서는 페이징 비활성화
+          errorMessage = null;
+        });
+        print('[DEBUG] 오프라인 데이터 로드 완료: ${notices.length}개');
+      } else {
+        setState(() {
+          notices = [];
+          isLoading = false;
+          hasMoreData = false;
+          errorMessage = '저장된 공지사항이 없습니다.\n인터넷에 연결 후 다시 시도해주세요.';
+        });
+        print('[DEBUG] 저장된 오프라인 데이터 없음');
+      }
+    } catch (e) {
+      print('[DEBUG] 오프라인 데이터 로드 오류: $e');
+      setState(() {
+        notices = [];
+        isLoading = false;
+        hasMoreData = false;
+        errorMessage = '데이터를 불러올 수 없습니다.';
+      });
+    }
+  }
+
+  Future<void> _loadInitialNotices() async {
+    setState(() {
+      currentPage = 1;
+      notices.clear();
+      hasMoreData = true;
+      errorMessage = null;
+    });
+    fetchNoticesWithSearch(categoryType: typeMapping[selectedCategory], isInitialLoad: true);
+  }
+
+  void _loadMoreNotices() {
+    if (!hasMoreData || isLoadingMore) return;
+    setState(() {
+      currentPage++;
+    });
+    fetchNoticesWithSearch(
+      categoryType: typeMapping[selectedCategory],
+      searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+      searchType: searchType,
+      isLoadMore: true,
+    );
+  }
+
+  void _onSearchChanged(String value) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          searchQuery = value;
+          currentPage = 1;
+          notices.clear();
+          hasMoreData = true;
+          errorMessage = null;
+        });
+
+        if (isOnline) {
+          fetchNoticesWithSearch(
+            categoryType: typeMapping[selectedCategory],
+            searchQuery: value.isNotEmpty ? value : null,
+            searchType: searchType,
+            isInitialLoad: true,
+          );
+        } else {
+          // 오프라인에서는 로컬 데이터에서 필터링
+          _filterOfflineData(value);
+        }
+      }
+    });
+  }
+
+  // 오프라인 데이터 필터링
+  Future<void> _filterOfflineData(String searchQuery) async {
+    try {
+      final dbManager = DatabaseManager.instance;
+      final categoryType = typeMapping[selectedCategory];
+      String cacheKey = 'notice_${categoryType ?? 'all'}';
+
+      final cachedData = await dbManager.getMenuListData(cacheKey, 1);
+
+      if (cachedData != null && cachedData['notices'] != null) {
+        List<Map<String, dynamic>> allNotices = List<Map<String, dynamic>>.from(cachedData['notices']);
+
+        if (searchQuery.isNotEmpty) {
+          allNotices =
+              allNotices.where((notice) {
+                final title = (notice['title'] ?? '').toString().toLowerCase();
+                final author = (notice['author'] ?? '').toString().toLowerCase();
+                final query = searchQuery.toLowerCase();
+
+                if (searchType == 'title') {
+                  return title.contains(query);
+                } else {
+                  return author.contains(query);
+                }
+              }).toList();
+        }
+
+        setState(() {
+          notices = allNotices;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('[DEBUG] 오프라인 검색 오류: $e');
+    }
+  }
+
+  Future<void> fetchNoticesWithSearch({
+    String? categoryType,
+    String? searchQuery,
+    String? searchType,
+    bool isInitialLoad = false,
+    bool isLoadMore = false,
+  }) async {
+    if (isInitialLoad) {
+      setState(() => isLoading = true);
+    } else if (isLoadMore) {
+      setState(() => isLoadingMore = true);
+    }
+
+    try {
+      // 타임아웃 설정 (5초로 단축)
+      final dio = Dio();
+      dio.options.connectTimeout = const Duration(seconds: 5);
+      dio.options.receiveTimeout = const Duration(seconds: 5);
+
+      String url;
+
+      // 검색어가 있으면 검색 API 사용, 없으면 일반 목록 API 사용
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        url = ApiConfig.getUrl('/notice/search?page=$currentPage&pageSize=$pageSize');
+        if (categoryType != null && categoryType.isNotEmpty) {
+          url += '&type=$categoryType';
+        }
+        if (searchType == 'title') {
+          url += '&title=${Uri.encodeComponent(searchQuery)}';
+        } else if (searchType == 'author') {
+          url += '&author=${Uri.encodeComponent(searchQuery)}';
+        }
+      } else {
+        url = ApiConfig.getUrl('/notice/list?page=$currentPage&pageSize=$pageSize');
+        if (categoryType != null && categoryType.isNotEmpty) {
+          url += '&type=$categoryType';
+        }
       }
 
       print('[DEBUG] 공지사항 요청 URL: $url');
-      print('[DEBUG] 선택된 카테고리: $selectedCategory');
-      print('[DEBUG] 카테고리 코드: $categoryType');
+      print('[DEBUG] 현재 페이지: $currentPage');
 
-      final response = await Dio().get(url);
+      final response = await dio.get(url);
       if (response.statusCode == 200) {
         final responseData = List<Map<String, dynamic>>.from(response.data);
         print('[DEBUG] 받은 공지사항 수: ${responseData.length}');
 
-        // 받은 데이터의 카테고리 확인
-        if (responseData.isNotEmpty) {
-          final categories = responseData.map((notice) => notice['type']).toSet();
-          print('[DEBUG] 받은 데이터의 카테고리들: $categories');
-
-          // 첫 번째 공지사항 샘플 출력
-          print('[DEBUG] 첫 번째 공지사항 샘플:');
-          print('  - 제목: ${responseData[0]['title']}');
-          print('  - 카테고리: ${responseData[0]['type']}');
-          print('  - 작성자: ${responseData[0]['author']}');
-        } else {
-          print('[DEBUG] 빈 데이터 - 해당 카테고리에 공지사항이 없음');
+        // 데이터베이스에 저장 (첫 페이지만)
+        if (isInitialLoad && searchQuery == null) {
+          await _saveNoticeDataToCache(categoryType, responseData);
         }
 
-        // mounted 체크 후 setState 호출
         if (mounted) {
           setState(() {
-            notices = responseData;
+            if (isInitialLoad) {
+              notices = responseData;
+            } else {
+              notices.addAll(responseData);
+            }
+
+            // 받은 데이터가 pageSize보다 적으면 더 이상 데이터가 없음
+            if (responseData.length < pageSize) {
+              hasMoreData = false;
+            }
+
             isLoading = false;
+            isLoadingMore = false;
+            errorMessage = null;
           });
-          print('[DEBUG] UI 업데이트 완료 - 서버 사이드 필터링 사용');
+          print('[DEBUG] UI 업데이트 완료 - 총 공지사항: ${notices.length}');
         }
       }
     } catch (e) {
       print('[DEBUG] 공지 불러오기 오류: $e');
-      // mounted 체크 후 setState 호출
+
+      // 타임아웃이나 네트워크 오류 발생 시 오프라인 모드로 전환
+      if (e is DioException) {
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.connectionError) {
+          print('[DEBUG] 네트워크 오류 감지, 오프라인 모드로 전환');
+          setState(() => isOnline = false);
+
+          if (isInitialLoad) {
+            await _loadOfflineData();
+            return;
+          }
+        }
+      }
+
       if (mounted) {
-        setState(() => isLoading = false);
+        setState(() {
+          isLoading = false;
+          isLoadingMore = false;
+          if (isInitialLoad) {
+            errorMessage = '서버에 연결할 수 없습니다.\n인터넷 연결을 확인해주세요.';
+          }
+        });
       }
     }
   }
 
+  // 공지사항 데이터를 캐시에 저장
+  Future<void> _saveNoticeDataToCache(String? categoryType, List<Map<String, dynamic>> noticeData) async {
+    try {
+      final dbManager = DatabaseManager.instance;
+      String cacheKey = 'notice_${categoryType ?? 'all'}';
+
+      final cacheData = {
+        'notices': noticeData,
+        'category': categoryType,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      await dbManager.saveMenuListData(cacheKey, 1, cacheData);
+      print('[DEBUG] 공지사항 데이터 캐시 저장 완료: ${noticeData.length}개');
+    } catch (e) {
+      print('[DEBUG] 캐시 저장 오류: $e');
+    }
+  }
+
+  // 공지사항 상세 조회
   Future<Map<String, dynamic>?> fetchNoticeDetail(int chidx) async {
     try {
-      final res = await Dio().get(ApiConfig.getUrl('/notice/idx/$chidx'));
-      return res.data;
+      // 온라인일 때만 서버에서 가져오기
+      if (isOnline) {
+        final dio = Dio();
+        dio.options.connectTimeout = const Duration(seconds: 5);
+        dio.options.receiveTimeout = const Duration(seconds: 5);
+
+        final res = await dio.get(ApiConfig.getUrl('/notice/idx/$chidx'));
+
+        // 상세 데이터도 캐시에 저장
+        await _saveNoticeDetailToCache(chidx, res.data);
+
+        return res.data;
+      } else {
+        // 오프라인일 때는 캐시에서 가져오기
+        return await _getNoticeDetailFromCache(chidx);
+      }
     } catch (e) {
       print('상세 공지 불러오기 오류: $e');
+      // 온라인에서 실패했을 때 캐시에서 시도
+      return await _getNoticeDetailFromCache(chidx);
+    }
+  }
+
+  // 오프라인 카테고리별 데이터 로드
+  Future<void> _loadOfflineDataForCategory(String category) async {
+    setState(() => isLoading = true);
+
+    try {
+      final dbManager = DatabaseManager.instance;
+      final categoryType = typeMapping[category];
+      String cacheKey = 'notice_${categoryType ?? 'all'}';
+
+      final cachedData = await dbManager.getMenuListData(cacheKey, 1);
+
+      if (cachedData != null && cachedData['notices'] != null) {
+        final List<Map<String, dynamic>> cachedNotices = List<Map<String, dynamic>>.from(cachedData['notices']);
+
+        setState(() {
+          notices = cachedNotices;
+          isLoading = false;
+          hasMoreData = false;
+          errorMessage = null;
+        });
+      } else {
+        setState(() {
+          notices = [];
+          isLoading = false;
+          hasMoreData = false;
+          errorMessage = '저장된 ${category} 공지사항이 없습니다.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        notices = [];
+        isLoading = false;
+        hasMoreData = false;
+        errorMessage = '데이터를 불러올 수 없습니다.';
+      });
+    }
+  }
+
+  // 공지사항 상세 데이터 캐시 저장
+  Future<void> _saveNoticeDetailToCache(int chidx, Map<String, dynamic> detailData) async {
+    try {
+      final dbManager = DatabaseManager.instance;
+      await dbManager.saveMenuDetailData('notice', chidx.toString(), detailData);
+    } catch (e) {
+      print('[DEBUG] 상세 데이터 캐시 저장 오류: $e');
+    }
+  }
+
+  // 공지사항 상세 데이터 캐시에서 가져오기
+  Future<Map<String, dynamic>?> _getNoticeDetailFromCache(int chidx) async {
+    try {
+      final dbManager = DatabaseManager.instance;
+      return await dbManager.getMenuDetailData('notice', chidx.toString());
+    } catch (e) {
+      print('[DEBUG] 상세 데이터 캐시 조회 오류: $e');
       return null;
     }
+  }
+
+  // 기본 정보로 상세 페이지 이동
+  void _navigateWithBasicInfo(Map<String, dynamic> notice, int chidx) {
+    // 오프라인이거나 상세 정보가 없을 때는 기본 정보만으로 상세 페이지 이동
+    // 빈 URL을 전달하여 상세 페이지에서 오프라인 메시지 표시
+    final routeUrl =
+        '/notice/detail?title=${Uri.encodeComponent(notice['title'] ?? '')}&url=${Uri.encodeComponent('')}&chidx=${Uri.encodeComponent(chidx.toString())}&author=${Uri.encodeComponent(notice['author'] ?? '')}&createDt=${Uri.encodeComponent(notice['create_dt'] ?? '')}&offline=true';
+
+    GoRouterHistory.instance.pushWithHistory(context, routeUrl);
   }
 
   String getCategoryDisplayName(String? type) {
@@ -110,14 +462,6 @@ class _NoticeScreenNewState extends State<NoticeScreenNew> {
 
   @override
   Widget build(BuildContext context) {
-    // 서버에서 카테고리별 필터링을 지원하므로 검색어만 클라이언트에서 필터링
-    final filteredNotices =
-        notices.where((notice) {
-          final title = (notice['title'] ?? '').toString();
-          final matchesSearch = title.toLowerCase().contains(searchQuery.toLowerCase());
-          return matchesSearch;
-        }).toList();
-
     return CommonScaffold(
       title: '공지사항',
       body: Container(
@@ -144,9 +488,26 @@ class _NoticeScreenNewState extends State<NoticeScreenNew> {
                                     selected: isSelected,
                                     onSelected: (_) {
                                       print('[DEBUG] 카테고리 변경: $cat');
-                                      setState(() => selectedCategory = cat);
-                                      // 카테고리 변경 시 해당 카테고리의 공지사항 다시 가져오기
-                                      fetchNotices(categoryType: typeMapping[cat]);
+                                      setState(() {
+                                        selectedCategory = cat;
+                                        currentPage = 1;
+                                        notices.clear();
+                                        hasMoreData = true;
+                                        errorMessage = null;
+                                      });
+
+                                      if (isOnline) {
+                                        // 온라인: 서버에서 데이터 가져오기
+                                        fetchNoticesWithSearch(
+                                          categoryType: typeMapping[cat],
+                                          searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+                                          searchType: searchType,
+                                          isInitialLoad: true,
+                                        );
+                                      } else {
+                                        // 오프라인: 로컬 데이터 로드
+                                        _loadOfflineDataForCategory(cat);
+                                      }
                                     },
                                   ),
                                 );
@@ -154,29 +515,147 @@ class _NoticeScreenNewState extends State<NoticeScreenNew> {
                         ),
                       ),
                     ),
+                    // 검색 타입 선택
+                    Container(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                      child: Row(
+                        children: [
+                          Text(
+                            '검색 기준: ',
+                            style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodyMedium?.color),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('제목'),
+                            selected: searchType == 'title',
+                            onSelected: (_) {
+                              setState(() => searchType = 'title');
+                              if (searchQuery.isNotEmpty) {
+                                setState(() {
+                                  currentPage = 1;
+                                  notices.clear();
+                                  hasMoreData = true;
+                                  errorMessage = null;
+                                });
+
+                                if (isOnline) {
+                                  fetchNoticesWithSearch(
+                                    categoryType: typeMapping[selectedCategory],
+                                    searchQuery: searchQuery,
+                                    searchType: searchType,
+                                    isInitialLoad: true,
+                                  );
+                                } else {
+                                  _filterOfflineData(searchQuery);
+                                }
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('작성자'),
+                            selected: searchType == 'author',
+                            onSelected: (_) {
+                              setState(() => searchType = 'author');
+                              if (searchQuery.isNotEmpty) {
+                                setState(() {
+                                  currentPage = 1;
+                                  notices.clear();
+                                  hasMoreData = true;
+                                  errorMessage = null;
+                                });
+
+                                if (isOnline) {
+                                  fetchNoticesWithSearch(
+                                    categoryType: typeMapping[selectedCategory],
+                                    searchQuery: searchQuery,
+                                    searchType: searchType,
+                                    isInitialLoad: true,
+                                  );
+                                } else {
+                                  _filterOfflineData(searchQuery);
+                                }
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    // 검색창
                     Container(
                       color: Theme.of(context).scaffoldBackgroundColor,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: TextField(
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          hintText: '제목으로 검색',
-                          border: OutlineInputBorder(),
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.search),
+                          hintText: searchType == 'title' ? '제목으로 검색' : '작성자로 검색',
+                          border: const OutlineInputBorder(),
+                          suffixIcon:
+                              _searchController.text.isNotEmpty
+                                  ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      _onSearchChanged('');
+                                    },
+                                  )
+                                  : null,
                         ),
-                        onChanged: (value) => setState(() => searchQuery = value),
+                        onChanged: _onSearchChanged,
                       ),
                     ),
                     Expanded(
                       child: Container(
                         color: Theme.of(context).scaffoldBackgroundColor,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: filteredNotices.length,
-                          itemBuilder: (context, index) {
-                            final notice = filteredNotices[index];
-                            return _buildNoticeCard(context, notice);
-                          },
-                        ),
+                        child:
+                            notices.isEmpty
+                                ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        errorMessage != null ? Icons.error_outline : Icons.article_outlined,
+                                        size: 64,
+                                        color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        errorMessage ?? (searchQuery.isNotEmpty ? '검색 결과가 없습니다.' : '공지사항이 없습니다.'),
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Theme.of(context).textTheme.bodyMedium?.color,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      if (errorMessage != null && !isOnline) ...[
+                                        const SizedBox(height: 12),
+                                        ElevatedButton.icon(
+                                          onPressed: () => _checkConnectivityAndLoadData(),
+                                          icon: const Icon(Icons.refresh),
+                                          label: const Text('다시 시도'),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                )
+                                : ListView.builder(
+                                  controller: _scrollController,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  itemCount: notices.length + (isLoadingMore ? 1 : 0),
+                                  itemBuilder: (context, index) {
+                                    if (index == notices.length) {
+                                      // 로딩 인디케이터
+                                      return const Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Center(child: CircularProgressIndicator()),
+                                      );
+                                    }
+                                    final notice = notices[index];
+                                    return _buildNoticeCard(context, notice);
+                                  },
+                                ),
                       ),
                     ),
                   ],
@@ -221,18 +700,26 @@ class _NoticeScreenNewState extends State<NoticeScreenNew> {
               return;
             }
 
+            // 상세 데이터 시도
             final detail = await fetchNoticeDetail(chidx);
+
             if (detail != null) {
+              // 서버에서 가져온 상세 데이터가 있는 경우
               final htmlPath = detail['content'];
               if (htmlPath != null && htmlPath.isNotEmpty) {
                 final fullUrl = ApiConfig.getFileUrl(htmlPath);
 
-                // GoRouterHistory를 사용하여 공지사항 상세보기로 이동
                 final routeUrl =
-                    '/notice/detail?title=${Uri.encodeComponent(detail['title'] ?? '')}&url=${Uri.encodeComponent(fullUrl)}&chidx=${Uri.encodeComponent(chidx.toString())}&author=${Uri.encodeComponent(notice['author'] ?? '')}&createDt=${Uri.encodeComponent(notice['create_dt'] ?? '')}';
+                    '/notice/detail?title=${Uri.encodeComponent(detail['title'] ?? notice['title'] ?? '')}&url=${Uri.encodeComponent(fullUrl)}&chidx=${Uri.encodeComponent(chidx.toString())}&author=${Uri.encodeComponent(detail['author'] ?? notice['author'] ?? '')}&createDt=${Uri.encodeComponent(detail['create_dt'] ?? notice['create_dt'] ?? '')}';
 
                 GoRouterHistory.instance.pushWithHistory(context, routeUrl);
+              } else {
+                // 상세 데이터는 있지만 content가 없는 경우 - 기본 정보로 이동
+                _navigateWithBasicInfo(notice, chidx);
               }
+            } else {
+              // 상세 데이터를 가져올 수 없는 경우 (오프라인 등) - 기본 정보로 이동
+              _navigateWithBasicInfo(notice, chidx);
             }
           },
           borderRadius: BorderRadius.circular(12),
@@ -258,7 +745,6 @@ class _NoticeScreenNewState extends State<NoticeScreenNew> {
                 const SizedBox(height: 12),
                 // 카테고리와 날짜 정보
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // 카테고리 태그
                     Container(
@@ -273,10 +759,46 @@ class _NoticeScreenNewState extends State<NoticeScreenNew> {
                         style: TextStyle(fontSize: 12, color: theme.primaryColor, fontWeight: FontWeight.w500),
                       ),
                     ),
+                    const SizedBox(width: 12), // 카테고리와 작성자 사이 갭
                     // 작성자 및 날짜
-                    Text(
-                      '$author / $createDate',
-                      style: TextStyle(fontSize: 13, color: theme.textTheme.bodySmall?.color ?? Colors.grey[600]),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '$author / $createDate',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: theme.textTheme.bodySmall?.color ?? Colors.grey[600],
+                              ),
+                            ),
+                          ),
+                          if (!isOnline)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.cloud_off, size: 12, color: Colors.orange[700]),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '오프라인',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.orange[700],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
